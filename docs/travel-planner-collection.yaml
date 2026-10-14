@@ -1,0 +1,75 @@
+openapi: 3.0.0
+info:
+  title: travel-planner-collection
+  version: 1.0.0
+paths:
+  /api/users:
+    get:
+      summary: Find all users
+      operationId: users_cassiachagas_documents_bruno_travel_planner_find_all_users_yml
+      description: ''
+      tags:
+        - ''
+      responses:
+        '200':
+          description: ''
+      servers:
+        - url: http://localhost:8080
+    post:
+      summary: Create user
+      operationId: users_cassiachagas_documents_bruno_travel_planner_create_user_yml
+      description: ''
+      tags:
+        - ''
+      responses:
+        '200':
+          description: ''
+      requestBody:
+        $ref: '#/components/requestBodies/create_user'
+      servers:
+        - url: http://localhost:8080
+  /api/users/da8c9c2a-b67c-4b6b-87e8-d1f74f2224df:
+    get:
+      summary: Find user by id
+      operationId: users_cassiachagas_documents_bruno_travel_planner_find_user_by_id_yml
+      description: ''
+      tags:
+        - ''
+      responses:
+        '200':
+          description: ''
+      servers:
+        - url: http://localhost:8080
+    delete:
+      summary: Delete user
+      operationId: users_cassiachagas_documents_bruno_travel_planner_delete_user_yml
+      description: ''
+      tags:
+        - ''
+      responses:
+        '200':
+          description: ''
+      servers:
+        - url: http://localhost:8080
+servers: []
+components:
+  schemas:
+    create_user:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+      example:
+        name: Test 1
+        email: test5@example.com
+  requestBodies:
+    create_user:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/create_user'
+      description: ''
+      required: true
+  securitySchemes: {}
