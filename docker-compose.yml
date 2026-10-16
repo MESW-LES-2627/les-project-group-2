@@ -5,18 +5,18 @@ services:
     restart: unless-stopped
 
     environment:
-      POSTGRES_DB: travel_planner
-      POSTGRES_USER: travel_planner
-      POSTGRES_PASSWORD: local_dev_password
+      POSTGRES_DB: ${DB_NAME:-travel_planner}
+      POSTGRES_USER: ${DB_USER:-travel_planner}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-local_dev_password}
 
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U travel_planner -d travel_planner" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-travel_planner} -d ${DB_NAME:-travel_planner}" ]
       interval: 5s
       timeout: 5s
       retries: 5
