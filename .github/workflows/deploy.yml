@@ -14,9 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Destroy repo reference 
+        run: rm -rf .git 
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install Vercel CLI
         run: npm i -g vercel
