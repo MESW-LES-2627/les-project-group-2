@@ -17,8 +17,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24 
-      #- run: npm i -D @types/node@^24v
       - run: npm i -D vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/jest-dom
+      - run: npm i -D @vitest/coverage-v8
       - run: npm test 
 
 

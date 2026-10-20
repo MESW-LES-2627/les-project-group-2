@@ -32,6 +32,6 @@
     "unrs-resolver@1.12.2": true
   },
   "scripts": {
-  "test": "vitest run"
+  "test": "vitest run --coverage"
   }
 }

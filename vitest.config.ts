@@ -5,5 +5,14 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    // coverage: {
+    //  provider: 'v8',
+    //  reporter: ['text'],
+    //  include: ['src/**/*.{ts,tsx}'],
+    //  exclude: ['**/*.d.ts', '**/*.config.*', '**/layout.tsx'],
+    //  thresholds: {
+    //   lines: 90,
+    // },
+    //}
   },
 })
