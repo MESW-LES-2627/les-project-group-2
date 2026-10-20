@@ -15,6 +15,12 @@ An application that helps groups organize (and visualize) itineraries, activitie
 <br>
 
 ## Technology Stack 
+We intend on using:
+
+- React/Typescript for frontend
+- NextJS/Typescritpt for backend
+- Supabase and Postgres for database implementation 
+- Vercel and github actions for CI/CD 
 
 <br>
 
