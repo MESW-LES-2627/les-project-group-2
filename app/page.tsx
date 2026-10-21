@@ -58,6 +58,13 @@ export default function Home() {
           >
             Documentation
           </a>
+          <a
+              href="/trips/new"
+              className="rounded-full bg-blue-700 px-5 py-3
+             font-medium text-white hover:bg-blue-800"
+          >
+            Create a trip
+          </a>
         </div>
       </main>
     </div>
