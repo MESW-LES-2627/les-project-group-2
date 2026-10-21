@@ -48,10 +48,72 @@ A Task/Feature is considered complete when all off the following conditions are 
 
 <br>
 
+## Project Structure
+
+The project uses Next.js with TypeScript and the App Router.
+
+```text
+.
+├── app/
+│   ├── trips/
+│   │   └── new/
+│   │       └── page.tsx   # Create a new trip
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── globals.css
+├── lib/
+│   └── supabase.ts        # Supabase client configuration
+├── public/
+├── .env.local             # Local environment variables (not committed)
+├── .gitignore
+└── package.json
+```
+
+## Environment Variables
+
+The application uses Supabase for database access.
+
+1. Create a `.env.local` file in the project root, at the same level as `package.json`.
+2. Add the following environment variables:
+
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_KEY=your-supabase-publishable-key
+```
+
+Replace the example values with the Project URL and Publishable Key from the Supabase dashboard.
+
+**Important:**
+- Never commit `.env.local` or expose credentials in the repository.
+- The `NEXT_PUBLIC_` prefix makes these variables available to browser-side code. Only use a Supabase publishable key here, never a secret or `service_role` key.
+
+## Running the Application
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+To create a production build:
+
+```bash
+npm run build
+```
+
+
 ## Authors 
 
 This project is being developed by: 
 - Gonçalo Sousa, nºXXXXXXXXX
-- Cássia Chagas, nºXXXXXXXXX 
+- Cássia Chagas, nº202600801
 - Pedro Monteiro, nºXXXXXXXXX
 - Daniel Duarte, nº202306000
