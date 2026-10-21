@@ -1,11 +1,13 @@
 
+import { Suspense } from 'react'
+
 type TripWorkspacePageProps = {
     params: Promise<{ id: string }>
 }
 
-export default async function TripWorkspacePage({
-                                                    params,
-                                                }: TripWorkspacePageProps) {
+async function TripWorkspaceContent({
+                                        params,
+                                    }: TripWorkspacePageProps) {
     const { id } = await params
 
     const sections = [
@@ -57,5 +59,23 @@ export default async function TripWorkspacePage({
                 ))}
             </div>
         </main>
+    )
+}
+
+function WorkspaceFallback() {
+    return (
+        <main className="mx-auto max-w-5xl p-8">
+            <p className="text-gray-500">Loading trip workspace...</p>
+        </main>
+    )
+}
+
+export default function TripWorkspacePage({
+                                              params,
+                                          }: TripWorkspacePageProps) {
+    return (
+        <Suspense fallback={<WorkspaceFallback />}>
+            <TripWorkspaceContent params={params} />
+        </Suspense>
     )
 }
