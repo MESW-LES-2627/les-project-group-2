@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run --coverage"
   },
   "dependencies": {
     "next": "16.4.2",
@@ -30,8 +31,5 @@
   },
   "allowScripts": {
     "unrs-resolver@1.12.2": true
-  },
-  "scripts": {
-  "test": "vitest run --coverage"
   }
 }
