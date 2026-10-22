@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { CalendarDays, Heart, Map, Users } from 'lucide-react'
-import { LoginBox } from './boxes/login.tsx'
-import { SignUpBox } from './boxes/signup.tsx'
+import { LoginBox } from './boxes/login'
+import { SignUpBox } from './boxes/signup'
 
 const features = [
   { icon: Users, text: 'Create or join groups' },
