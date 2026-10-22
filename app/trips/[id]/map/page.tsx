@@ -49,8 +49,6 @@ async function TripMapContent({ params }: TripMapPageProps) {
   return (
     <main className="w-screen h-screen overflow-hidden">
       <TripMapContainer
-        tripId={id}
-        tripName={`Trip Workspace #${id}`}
         currentUserEmail={userEmail}
         cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
       />

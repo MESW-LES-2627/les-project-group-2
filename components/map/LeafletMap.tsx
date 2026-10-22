@@ -165,6 +165,12 @@ export default function LeafletMap({
         className: 'leaflet-tooltip-custom',
       })
 
+      marker.bindPopup(`
+        <div style="font-family: inherit; font-size: 13px; font-weight: 600; color: #0f172a; padding: 2px 4px;">
+          ${pin.name}
+        </div>
+      `)
+
       marker.on('click', (e: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(e)
         onPinClick(pin)
