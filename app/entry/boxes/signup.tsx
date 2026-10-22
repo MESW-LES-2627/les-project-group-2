@@ -1,17 +1,18 @@
+import { useActionState } from 'react'
 import { Eye, EyeOff, Lock, User } from 'lucide-react'
-//import { login, signup } from '../actions'
-
-type SearchParams = Promise<{ error?: string; message?: string }>
+import { signup } from '../actions/auth'
 
 export function SignUpBox({onSwitch} : {onSwitch : () => void}){
+  const [signup_res, signup_action, pending] = useActionState(signup, null)
+
   return (
     <section className="w-full rounded-2xl bg-slate-800/70 p-8 shadow-2xl backdrop-blur-md sm:p-10">
-      <h2 className="text-2xl font-bold">Welcome back!</h2>
+      <h2 className="text-2xl font-bold">Hello new traveller!</h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-300">
-        Welcome, new traveller. Make yourself at home. 
+        What should we call you by? 
       </p>
 
-      <form className="mt-8 flex flex-col gap-4">
+      <form className="mt-8 flex flex-col gap-4" action={signup_action}>
 
         <div className="relative">
           <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -40,7 +41,7 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
         <div className="relative">
           <input
             name="password"
-            type={'text'}
+            type="text"
             required
             autoComplete="current-password"
             placeholder="Password"
@@ -51,7 +52,7 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
         <div className="relative">
           <input
             name="password_conf"
-            type={'password'}
+            type="password"
             required
             autoComplete="current-password"
             placeholder="Confirm password"
@@ -59,27 +60,25 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
           />
         </div>
 
-
-        {/*<>
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          {message && <p className="text-sm text-green-400">{message}</p>}
-        </>*/}
+        <>
+          {signup_res?.error && <p className="text-sm text-red-400">{signup_res?.error}</p>}
+          {signup_res?.message && <p className="text-sm text-green-400">{signup_res?.message}</p>}
+        </>
 
         <button
-          //formAction={login}
+          type="submit"
+          disabled={pending} 
           className="mt-2 w-full rounded-xl bg-slate-500/80 py-3.5 text-sm font-semibold transition hover:bg-slate-400/80"
         >
           Sign Up
         </button>
 
-        {/* Divisor */}
         <div className="flex items-center gap-4 text-xs text-slate-400">
           <div className="h-px flex-1 bg-white/15" />
           or
           <div className="h-px flex-1 bg-white/15" />
         </div>
 
-        {/* Registo */}
         <p className="mt-4 text-center text-xs text-slate-400">
           Already have an account?{' '}
           <button
