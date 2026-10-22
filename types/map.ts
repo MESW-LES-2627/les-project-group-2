@@ -52,24 +52,37 @@ export const CARTO_BASEMAPS: Record<string, CartoBasemapLayer> = {
   voyager: {
     id: 'voyager',
     name: 'Carto Voyager',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: ['a', 'b', 'c', 'd'],
   },
   positron: {
     id: 'positron',
     name: 'Carto Positron (Light)',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: ['a', 'b', 'c', 'd'],
   },
   darkMatter: {
     id: 'darkMatter',
     name: 'Carto Dark Matter',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: ['a', 'b', 'c', 'd'],
   },
+}
+
+/**
+ * @brief Constructs a Carto tile layer URL, appending the API key query parameter if available.
+ * @param baseUrl Base tile URL.
+ * @param apiKey Optional Carto API key.
+ * @return Full tile URL string.
+ */
+export function getCartoTileUrl(baseUrl: string, apiKey?: string): string {
+  const key = apiKey || process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY || ''
+  if (!key) return baseUrl
+  const delimiter = baseUrl.includes('?') ? '&' : '?'
+  return `${baseUrl}${delimiter}key=${encodeURIComponent(key)}`
 }
 
 /**

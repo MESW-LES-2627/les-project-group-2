@@ -47,6 +47,7 @@ async function MapContent() {
         tripId="default"
         tripName="Portugal Roadtrip"
         currentUserEmail={userEmail}
+        cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
       />
     </main>
   )

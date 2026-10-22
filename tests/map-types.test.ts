@@ -11,6 +11,7 @@ import {
   CARTO_BASEMAPS,
   PORTUGAL_DEFAULT_CENTER,
   PORTUGAL_DEFAULT_ZOOM,
+  getCartoTileUrl,
   PinCategory,
 } from '@/types/map'
 
@@ -60,5 +61,20 @@ describe('Map Type and Category Helpers', () => {
     expect(CARTO_BASEMAPS.voyager.url).toContain('cartocdn.com')
     expect(CARTO_BASEMAPS.positron.url).toContain('cartocdn.com')
     expect(CARTO_BASEMAPS.darkMatter.url).toContain('cartocdn.com')
+  })
+
+  it('constructs Carto tile URL with API key', () => {
+    const base = 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'
+    const key = 'test-api-key-123'
+    expect(getCartoTileUrl(base, key)).toBe(
+      'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=test-api-key-123'
+    )
+
+    const withQuery = 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?v=1'
+    expect(getCartoTileUrl(withQuery, key)).toBe(
+      'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?v=1&key=test-api-key-123'
+    )
+
+    expect(getCartoTileUrl(base, '')).toBe(base)
   })
 })

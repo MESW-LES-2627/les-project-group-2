@@ -52,6 +52,7 @@ async function TripMapContent({ params }: TripMapPageProps) {
         tripId={id}
         tripName={`Trip Workspace #${id}`}
         currentUserEmail={userEmail}
+        cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
       />
     </main>
   )

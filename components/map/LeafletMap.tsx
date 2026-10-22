@@ -14,6 +14,7 @@ import {
   PORTUGAL_DEFAULT_CENTER,
   PORTUGAL_DEFAULT_ZOOM,
   getCategoryColor,
+  getCartoTileUrl,
 } from '@/types/map'
 
 interface FlyToTarget {
@@ -25,6 +26,7 @@ interface FlyToTarget {
 interface LeafletMapProps {
   pins: Pin[]
   layerId: string
+  apiKey?: string
   flyToTarget: FlyToTarget | null
   onMapClick: (lat: number, lng: number) => void
   onPinClick: (pin: Pin) => void
@@ -76,6 +78,7 @@ function createPinIcon(category: Pin['category']): L.DivIcon {
 export default function LeafletMap({
   pins,
   layerId,
+  apiKey,
   flyToTarget,
   onMapClick,
   onPinClick,
@@ -131,15 +134,16 @@ export default function LeafletMap({
     }
 
     const basemapConfig = CARTO_BASEMAPS[layerId] || CARTO_BASEMAPS.voyager
+    const tileUrl = getCartoTileUrl(basemapConfig.url, apiKey)
 
-    const newTileLayer = L.tileLayer(basemapConfig.url, {
+    const newTileLayer = L.tileLayer(tileUrl, {
       attribution: basemapConfig.attribution,
       subdomains: basemapConfig.subdomains,
       maxZoom: 20,
     }).addTo(map)
 
     tileLayerRef.current = newTileLayer
-  }, [layerId])
+  }, [layerId, apiKey])
 
   // Update pin markers
   useEffect(() => {

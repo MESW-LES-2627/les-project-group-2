@@ -50,6 +50,7 @@ interface TripMapContainerProps {
   tripId?: string
   tripName?: string
   currentUserEmail?: string
+  cartoApiKey?: string
 }
 
 /**
@@ -60,6 +61,7 @@ export function TripMapContainer({
   tripId = 'default',
   tripName = 'Portugal Exploration',
   currentUserEmail = 'explorer@planit.app',
+  cartoApiKey,
 }: TripMapContainerProps) {
   const [pins, setPins] = useState<Pin[]>([])
   const [activeLayerId, setActiveLayerId] = useState('voyager')
@@ -220,6 +222,7 @@ export function TripMapContainer({
       <DynamicLeafletMap
         pins={pins}
         layerId={activeLayerId}
+        apiKey={cartoApiKey || process.env.NEXT_PUBLIC_CARTO_API_KEY}
         flyToTarget={flyToTarget}
         onMapClick={handleMapClick}
         onPinClick={handlePinClick}
