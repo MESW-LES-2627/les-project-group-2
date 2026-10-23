@@ -1,5 +1,5 @@
 import { useActionState } from 'react'
-import { Eye, EyeOff, Lock, User } from 'lucide-react'
+import { User } from 'lucide-react'
 import { signup } from '../actions/auth'
 
 export function SignUpBox({onSwitch} : {onSwitch : () => void}){
