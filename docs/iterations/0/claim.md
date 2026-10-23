@@ -77,7 +77,7 @@ Documented in [README and Local Development Setup](https://github.com/MESW-LES-2
 
 | Artefact | Link | Notes |
 | :--- | :--- | :--- |
-| **Definition of Done** | [README and Definition of Done](https://github.com/MESW-LES-2627/les-project-group-2/blob/main/README.md#definition-of-done) | Explicit quality gates (>90% line coverage, zero compile/lint errors, PR approval, Doxygen comments) |
+| **Definition of Done** | [Wiki: Definition of Done](https://github.com/MESW-LES-2627/les-project-group-2/wiki/Business-Model#definition-of-done) | Explicit quality gates (>90% line coverage, zero compile/lint errors, PR approval, Doxygen comments) |
 | **Product Vision & Business Model** | [Wiki: Business Model](https://github.com/MESW-LES-2627/les-project-group-2/wiki/Business-Model) | Problem, solution, features and core project assumptions |
 | **Epics and User Stories** | [Wiki: Epics and User Stories](https://github.com/MESW-LES-2627/les-project-group-2/wiki/Epics-and-User-Stories) | Breakdown of all 6 project epics and associated stories |
 | **Architecture: Local Docker & Supabase** | [`docker-compose.yml`](https://github.com/MESW-LES-2627/les-project-group-2/blob/main/docker-compose.yml) · [`supabase/config.toml`](https://github.com/MESW-LES-2627/les-project-group-2/blob/main/supabase/config.toml) | Containerized local Postgres 17, GoTrue auth, Studio, and Mailpit email service |
