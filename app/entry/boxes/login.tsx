@@ -1,9 +1,11 @@
+'use client'
+
 import { useState, useActionState } from 'react'
 import { Eye, EyeOff, Lock, User } from 'lucide-react'
 import { login } from '../actions/auth'
 
-export function LoginBox({onSwitch} : {onSwitch : () => void}){
-  const [visible, setVisible] = useState(false) 
+export function LoginBox({ onSwitch }: { onSwitch: () => void }) {
+  const [visible, setVisible] = useState(false)
   const [login_res, login_action, pending] = useActionState(login, null)
 
   return (
@@ -14,7 +16,6 @@ export function LoginBox({onSwitch} : {onSwitch : () => void}){
       </p>
 
       <form className="mt-8 flex flex-col gap-4" action={login_action}>
-
         <div className="relative">
           <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -47,10 +48,8 @@ export function LoginBox({onSwitch} : {onSwitch : () => void}){
           </button>
         </div>
 
-        <>
-          {login_res?.error && <p className="text-sm text-red-400">{login_res.error}</p>}
-          {login_res?.message && <p className="text-sm text-green-400">{login_res.message}</p>}
-        </>
+        {login_res?.error && <p className="text-sm text-red-400">{login_res.error}</p>}
+        {login_res?.message && <p className="text-sm text-green-400">{login_res.message}</p>}
 
         <button
           type="submit"
@@ -59,25 +58,24 @@ export function LoginBox({onSwitch} : {onSwitch : () => void}){
         >
           Sign In
         </button>
-
-        <div className="flex items-center gap-4 text-xs text-slate-400">
-          <div className="h-px flex-1 bg-white/15" />
-          or
-          <div className="h-px flex-1 bg-white/15" />
-        </div>
-
-        <p className="mt-4 text-center text-xs text-slate-400">
-          Don&apos;t have an account?{' '}
-          <button
-            type="button"
-            onClick={onSwitch}
-            className="font-medium text-sky-300 hover:underline"
-          >
-            Sign up 
-          </button>
-        </p>
       </form>
-    </section>
-  );
-}
 
+      <div className="my-6 flex items-center gap-4 text-xs text-slate-400">
+        <div className="h-px flex-1 bg-white/15" />
+        or
+        <div className="h-px flex-1 bg-white/15" />
+      </div>
+
+      <p className="text-center text-xs text-slate-400">
+        Don&apos;t have an account?{' '}
+        <button
+          type="button"
+          onClick={onSwitch}
+          className="font-medium text-sky-300 hover:underline"
+        >
+          Sign up
+        </button>
+      </p>
+    </section>
+  )
+}

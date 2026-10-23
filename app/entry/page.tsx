@@ -7,7 +7,7 @@ import { SignUpBox } from './boxes/signup'
 
 const features = [
   { icon: Users, text: 'Create or join groups' },
-  { icon: Map, text: 'Plan iteneraries' },
+  { icon: Map, text: 'Plan itineraries' },
   { icon: CalendarDays, text: 'Organize dates and spendings' },
   { icon: Heart, text: 'Live new adventures' },
 ]
@@ -35,7 +35,7 @@ export default function EntryPage() {
           </h1>
 
           <p className="mt-8 text-lg leading-relaxed text-slate-300">
-            Get togheter with your friends, plan routes, share ideas and turn plans intro memories.
+            Get together with your friends, plan routes, share ideas and turn plans into memories.
           </p>
 
           <ul className="mt-10 hidden flex-col gap-5 lg:flex">
