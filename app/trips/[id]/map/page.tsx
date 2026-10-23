@@ -31,7 +31,7 @@ export default async function TripMapPage({ params }: TripMapPageProps) {
  */
 async function TripMapContent({ params }: TripMapPageProps) {
   await connection()
-  const { id } = await params
+  await params
 
   let userEmail = 'member@planit.app'
   try {
