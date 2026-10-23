@@ -32,15 +32,15 @@ Going out is fun; planning trips and managing logistics isn't. Many group trips 
 
 ## Key Features & Roadmap
 
-| Feature Area | Description | Status |
-| :--- | :--- | :--- |
-| **Interactive Map & Discovery** | Full-screen Carto Leaflet map centered on Portugal, place search with OpenStreetMap Nominatim, and categorized pin markers | **Live (Vertical Prototype)** |
+| Feature Area | Description |
+| :--- | :--- |
+| **Interactive Map & Discovery** | Full-screen Carto Leaflet map centered on Portugal, place search with OpenStreetMap Nominatim, and categorized pin markers |
 | **Authentication & Workspaces** | Secure user registration, authentication, and session handling via Supabase Auth | **Live (Vertical Prototype)** |
-| **Trip Workspaces** | Create and manage custom trips with dedicated workspaces and member collaboration | In Progress ([PR #47](https://github.com/MESW-LES-2627/les-project-group-2/pull/47)) |
-| **Date Consensus** | Propose candidate date windows and calculate optimal group availability | MVP Roadmap |
-| **Pin Voting & Decisions** | Upvote/downvote proposed places directly on the map to build itineraries | MVP Roadmap |
-| **Daily Itinerary Sequencing** | Group confirmed locations into daily schedules and filter map views by day | MVP Roadmap |
-| **Shared Expense Splitting** | Log shared expenses and generate debt settlement summaries | MVP Roadmap |
+| **Trip Workspaces** | Create and manage custom trips with dedicated workspaces and member collaboration |
+| **Date Consensus** | Propose candidate date windows and calculate optimal group availability |
+| **Pin Voting & Decisions** | Upvote/downvote proposed places directly on the map to build itineraries |
+| **Daily Itinerary Sequencing** | Group confirmed locations into daily schedules and filter map views by day |
+| **Shared Expense Splitting** | Log shared expenses and generate debt settlement summaries |
 
 ---
 
