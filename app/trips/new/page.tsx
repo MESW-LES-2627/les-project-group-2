@@ -1,73 +1,70 @@
 
 'use client'
 
-import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState, type FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
+
+export type MockTrip = {
+    id: string
+    name: string
+    destination: string
+    description: string
+    organizer: string
+    createdAt: string
+}
 
 export default function NewTripPage() {
-    const [name, setName] = useState('')
-    const [destination, setDestination] = useState('')
-    const [description, setDescription] = useState('')
+    const router = useRouter()
     const [error, setError] = useState('')
-    const [success, setSuccess] = useState('')
-    const [loading, setLoading] = useState(false)
 
-    async function handleSubmit(
-        event: React.FormEvent<HTMLFormElement>
-    ) {
+    function createTrip(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         setError('')
-        setSuccess('')
 
-        if (!name.trim()) {
+        const formData = new FormData(event.currentTarget)
+
+        const name = String(formData.get('name') ?? '').trim()
+        const destination = String(
+            formData.get('destination') ?? ''
+        ).trim()
+        const description = String(
+            formData.get('description') ?? ''
+        ).trim()
+
+        if (!name) {
             setError('Trip name is required.')
             return
         }
 
-        setLoading(true)
+        const id = crypto.randomUUID()
 
-        try {
-            const { error: insertError } = await supabase
-                .from('trips')
-                .insert({
-                    name: name.trim(),
-                    destination: destination.trim() || null,
-                    description: description.trim() || null,
-                })
-
-            if (insertError) {
-                throw insertError
-            }
-
-            setSuccess('Trip created successfully!')
-        } catch (err: unknown) {
-            console.error('Error creating trip:', err)
-
-            if (typeof err === 'object' && err !== null) {
-                const details = err as Record<string, unknown>
-
-                setError(
-                    [
-                        details.message,
-                        details.code,
-                        details.details,
-                        details.hint,
-                    ]
-                        .filter(Boolean)
-                        .map(String)
-                        .join(' — ') || JSON.stringify(err)
-                )
-            } else {
-                setError(String(err))
-            }
-        } finally {
-            setLoading(false)
+        const trip: MockTrip = {
+            id,
+            name,
+            destination,
+            description,
+            organizer: 'You',
+            createdAt: new Date().toISOString(),
         }
+
+        sessionStorage.setItem(
+            `mock-trip-${id}`,
+            JSON.stringify(trip)
+        )
+
+        router.push(`/trips/${id}`)
     }
 
     return (
         <main className="mx-auto w-full max-w-xl p-8">
-            <h1 className="mb-2 text-3xl font-semibold">
+            <a
+                href="/dashboard"
+                className="text-sm text-blue-700 hover:underline"
+            >
+                ← Back to dashboard
+            </a>
+
+            <h1 className="mb-2 mt-6 text-3xl font-semibold">
                 Create a trip
             </h1>
 
@@ -75,28 +72,47 @@ export default function NewTripPage() {
                 Create a shared space for your group to plan the trip.
             </p>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form
+                onSubmit={createTrip}
+                noValidate
+                className="flex flex-col gap-4"
+            >
                 <div>
                     <label htmlFor="name" className="mb-1 block">
                         Trip name *
                     </label>
+
                     <input
                         id="name"
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
+                        name="name"
+                        type="text"
+                        maxLength={120}
+                        aria-invalid={Boolean(error)}
+                        aria-describedby={error ? 'name-error' : undefined}
                         className="w-full rounded-lg border p-3"
                         placeholder="Summer holidays"
                     />
+
+                    {error && (
+                        <p
+                            id="name-error"
+                            role="alert"
+                            className="mt-1 text-sm text-red-600"
+                        >
+                            {error}
+                        </p>
+                    )}
                 </div>
 
                 <div>
                     <label htmlFor="destination" className="mb-1 block">
                         Destination
                     </label>
+
                     <input
                         id="destination"
-                        value={destination}
-                        onChange={(event) => setDestination(event.target.value)}
+                        name="destination"
+                        type="text"
                         className="w-full rounded-lg border p-3"
                         placeholder="Santiago de Compostela"
                     />
@@ -106,26 +122,22 @@ export default function NewTripPage() {
                     <label htmlFor="description" className="mb-1 block">
                         Description
                     </label>
+
                     <textarea
                         id="description"
-                        value={description}
-                        onChange={(event) => setDescription(event.target.value)}
-                        className="w-full rounded-lg border p-3"
+                        name="description"
                         rows={4}
+                        className="w-full rounded-lg border p-3"
                         placeholder="What are you planning?"
                     />
                 </div>
 
-                {error && <p role="alert">{error}</p>}
-
-                <button type="submit" disabled={loading}
-                        className="rounded-full bg-blue-700 px-5 py-3
-             font-medium text-white hover:bg-blue-800"
+                <button
+                    type="submit"
+                    className="rounded-full bg-blue-700 px-5 py-3 font-medium text-white hover:bg-blue-800"
                 >
-                    {loading ? 'Creating...' : 'Create trip'}
+                    Create trip
                 </button>
-                {error && <p role="alert">{error}</p>}
-                {success && <p role="status">{success}</p>}
             </form>
         </main>
     )
