@@ -48,67 +48,58 @@ A Task/Feature is considered complete when all off the following conditions are 
 
 <br>
 
-## Project Structure
+## Local Development Setup
 
-The project uses Next.js with TypeScript and the App Router.
+### 1. Prerequisites
+- [Node.js](https://nodejs.org/) (v20+)
+- [Docker](https://www.docker.com/) & Docker Compose
 
-```text
-.
-├── app/
-│   ├── trips/
-│   │   └── new/
-│   │       └── page.tsx   # Create a new trip
-│   ├── layout.tsx
-│   ├── page.tsx
-│   └── globals.css
-├── lib/
-│   └── supabase.ts        # Supabase client configuration
-├── public/
-├── .env.local             # Local environment variables (not committed)
-├── .gitignore
-└── package.json
+### 2. Environment Setup
+Copy the example environment variables file:
+```bash
+cp .env.example .env.local
+```
+The defaults in `.env.example` are pre-configured to work out-of-the-box with the local Docker environment — no external or production Supabase credentials are required.
+
+### 3. Running Database & Services Locally
+
+#### Option A: Local Supabase Stack (Postgres + Auth + Studio via Docker)
+The application uses Supabase Auth and database features. You can start the full local stack (PostgreSQL, GoTrue Auth, Studio web UI, and Mailpit for email testing) using Docker via the npm scripts or Makefile:
+
+```bash
+# Start local Supabase containers in Docker
+npm run db:start   # or: make db
+
+# View status and access URLs
+npm run db:status  # or: make status
+
+# Stop local Supabase containers
+npm run db:stop    # or: make db-stop
 ```
 
-## Environment Variables
+- **Local API Gateway:** `http://127.0.0.1:54321`
+- **Postgres Database:** `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+- **Supabase Studio (Web GUI):** [http://127.0.0.1:54323](http://127.0.0.1:54323)
+- **Mailpit (Local Email Inbox):** [http://127.0.0.1:54324](http://127.0.0.1:54324)
 
-The application uses Supabase for database access.
+#### Option B: Standalone PostgreSQL (via Docker Compose)
+If you only need a standalone PostgreSQL database running in Docker:
 
-1. Create a `.env.local` file in the project root, at the same level as `package.json`.
-2. Add the following environment variables:
-
-```dotenv
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_KEY=your-supabase-publishable-key
+```bash
+docker compose up -d   # or: make compose-up
+docker compose down    # or: make compose-down
 ```
 
-Replace the example values with the Project URL and Publishable Key from the Supabase dashboard.
-
-**Important:**
-- Never commit `.env.local` or expose credentials in the repository.
-- The `NEXT_PUBLIC_` prefix makes these variables available to browser-side code. Only use a Supabase publishable key here, never a secret or `service_role` key.
-
-## Running the Application
-
-Install dependencies:
+### 4. Running the Web Application
+Install dependencies and run the Next.js development server:
 
 ```bash
 npm install
+npm run dev            # or: make dev
 ```
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-Start the development server:
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-To create a production build:
-
-```bash
-npm run build
-```
-
+<br>
 
 ## Authors 
 
