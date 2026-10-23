@@ -31,7 +31,7 @@ export async function signup(
 ): Promise<AuthState> {
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: formData.get('email') as string,
     password: formData.get('password') as string,
   })
@@ -40,7 +40,14 @@ export async function signup(
     return { error: error.message }
   }
 
-  return { message: 'Verify your email' }
+  // Email confirmations are disabled, so Supabase returns an active session
+  // and the new user can enter the application immediately.
+  if (data.session) {
+    revalidatePath('/', 'layout')
+    redirect('/dashboard')
+  }
+
+  return { error: 'Unable to start a session after sign-up. Please try logging in.' }
 }
 
 export async function logout() {

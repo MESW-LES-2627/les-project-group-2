@@ -69,7 +69,8 @@ export function LoginBox({onSwitch} : {onSwitch : () => void}){
         <p className="mt-4 text-center text-xs text-slate-400">
           Don&apos;t have an account?{' '}
           <button
-            formAction={onSwitch}
+            type="button"
+            onClick={onSwitch}
             className="font-medium text-sky-300 hover:underline"
           >
             Sign up 
@@ -79,5 +80,4 @@ export function LoginBox({onSwitch} : {onSwitch : () => void}){
     </section>
   );
 }
-
 
