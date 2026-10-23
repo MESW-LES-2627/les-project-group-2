@@ -8,6 +8,9 @@
 # env files
 .env.local
 
+# test coverage
+coverage/
+
 # misc
 .DS_Store
 *.log
