@@ -63,4 +63,7 @@ jobs:
 
       - name: Deploy (Staging)
         if: github.ref == 'refs/heads/staging'
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          DEPLOY_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} | tail -n 1)
+          echo "Deployed staging to: $DEPLOY_URL"
+          vercel alias set "$DEPLOY_URL" planit2-staging.vercel.app --token=${{ secrets.VERCEL_TOKEN }} || true

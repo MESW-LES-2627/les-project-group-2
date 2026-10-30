@@ -7,7 +7,7 @@
 ## Live Application & Environments
 
 - **Production:** [https://planit2.vercel.app](https://planit2.vercel.app) (auto-deployed from `main`)
-- **Staging:** Deployed on Vercel preview (auto-deployed from `staging`)
+- **Staging:** [https://planit2-staging.vercel.app](https://planit2-staging.vercel.app) (auto-deployed from `staging`)
 
 ---
 
