@@ -154,9 +154,17 @@ npm run build
 
 ## 6. Development Workflow & Guidelines
 
+### Branching Strategy & Environments
+
+We follow a two-tier continuous deployment workflow:
+
+- **`main`**: Production branch. Commits merged here automatically trigger production deployment to Vercel ([https://planit2.vercel.app](https://planit2.vercel.app)).
+- **`staging`**: Staging & pre-release integration branch. Commits merged here automatically trigger a staging / preview deployment to Vercel.
+- **Feature branches**: Branches for new features or bug fixes should branch off `staging` (or `main`) and be merged into `staging` for testing before promoting to `main`.
+
 ### Branch Naming
 
-Create feature branches off the latest `main`:
+Create feature branches off the latest `staging` (or `main`):
 
 - Features: `feature/US-x.y-Description` (e.g., `feature/US-3.1-InteractiveMapAndSearch`)
 - Bug fixes: `fix/description`
@@ -196,7 +204,7 @@ A task or feature is considered complete when:
    ```bash
    git push -u origin feature/your-feature-name
    ```
-2. Open a Pull Request targeting `main`.
+2. Open a Pull Request targeting `staging` (or `main` for release promotions).
 3. Reference the relevant issue in the PR description (e.g., `Closes #10`).
 4. Ensure all automated CI checks ([`checks.yaml`](.github/workflows/checks.yaml)) pass cleanly.
 5. Request a review from team members.

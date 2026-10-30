@@ -4,11 +4,10 @@
 
 ---
 
-## Live Application
+## Live Application & Environments
 
-The vertical prototype is live and deployed on Vercel:
-
-**[https://planit2.vercel.app](https://planit2.vercel.app)**
+- **Production:** [https://planit2.vercel.app](https://planit2.vercel.app) (auto-deployed from `main`)
+- **Staging:** Deployed on Vercel preview (auto-deployed from `staging`)
 
 ---
 
