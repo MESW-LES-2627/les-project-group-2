@@ -110,8 +110,14 @@ Documented in [README and Local Development Setup](https://github.com/MESW-LES-2
 Used Gemini 3.8 Flash using Antigravity CLI.
 
 - Successfully implemented most features of the vertical prototype.
-- While implenting the map we had to correct it by specifying that an API key is needed for it to work.
+- While implementing the map we had to correct it by specifying that an API key is needed for it to work.
 
 ### Creation of Issues
 
 Given the user stories we formed, we asked Gemini to automatically create issues for us.
+
+### Final Board: 
+
+<br>
+
+![Final board](Final_board_state.jpeg)

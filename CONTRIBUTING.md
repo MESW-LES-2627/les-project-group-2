@@ -197,6 +197,7 @@ A task or feature is considered complete when:
 7. Code adheres to ESLint rules with 0 errors and 0 warnings (`npm run lint`).
 8. Functions include Doxygen-style documentation.
 9. The Pull Request is reviewed and approved by at least one other team member.
+10. All user stories' acceptance criteria have at least one corresponding, and passing, acceptance test 
 
 ### Submitting a Pull Request
 
