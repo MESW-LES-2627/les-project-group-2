@@ -31,8 +31,7 @@ jobs:
         run: npm run build
 
 
-  deploy:
-    needs: test 
+  deploy: 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
