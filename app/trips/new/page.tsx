@@ -1,67 +1,74 @@
-
-import { createTrip } from './actions'
-import Link from "next/link";
+import {createTrip} from '../actions/create-trip'
 
 export default function NewTripPage() {
     return (
-        <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
+        <main className="mx-auto w-full max-w-xl p-8">
+            <a
+                href="/dashboard"
+                className="text-sm text-blue-700 hover:underline"
+            >
+                ← Back to dashboard
+            </a>
+
+            <h1 className="mb-2 mt-6 text-3xl font-semibold">
+                Create a trip
+            </h1>
+
+            <p className="mb-6 text-gray-500">
+                Create a shared space for your group to plan the trip.
+            </p>
+
             <form
                 action={createTrip}
-                className="w-full max-w-lg space-y-5 rounded-2xl border border-white/10 bg-slate-900 p-6"
+                className="flex flex-col gap-4"
             >
-                <Link
-                    href="/dashboard"
-                    className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
-                >
-                    <span aria-hidden="true">←</span>
-                    Back to dashboard
-                </Link>
-
-                <h1 className="text-2xl font-semibold">
-                    Create a new trip
-                </h1>
-
-                <div className="space-y-2">
-                    <label htmlFor="name" className="block text-sm">
-                        Trip name
+                <div>
+                    <label htmlFor="name" className="mb-1 block">
+                        Trip name *
                     </label>
+
                     <input
                         id="name"
                         name="name"
+                        type="text"
+                        maxLength={120}
                         required
-                        placeholder="e.g. Summer in Spain"
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-blue-500"
+                        className="w-full rounded-lg border p-3"
+                        placeholder="Summer holidays"
                     />
                 </div>
 
-                <div className="space-y-2">
-                    <label htmlFor="destination" className="block text-sm">
+                <div>
+                    <label htmlFor="destination" className="mb-1 block">
                         Destination
                     </label>
+
                     <input
                         id="destination"
                         name="destination"
-                        placeholder="e.g. Santiago de Compostela"
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-blue-500"
+                        type="text"
+                        className="w-full rounded-lg border p-3"
+                        placeholder="Santiago de Compostela"
                     />
                 </div>
 
-                <div className="space-y-2">
-                    <label htmlFor="description" className="block text-sm">
+                <div>
+                    <label htmlFor="description" className="mb-1 block">
                         Description
                     </label>
+
                     <textarea
                         id="description"
                         name="description"
                         rows={4}
-                        placeholder="Tell us about the trip..."
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-blue-500"
+                        className="w-full rounded-lg border p-3"
+                        placeholder="What are you planning?"
                     />
                 </div>
 
                 <button
                     type="submit"
-                    className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold transition-colors hover:bg-blue-500"
+                    className="rounded-full bg-blue-700 px-5 py-3 font-medium text-white hover:bg-blue-800"
                 >
                     Create trip
                 </button>

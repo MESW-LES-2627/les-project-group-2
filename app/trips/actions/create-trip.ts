@@ -1,11 +1,9 @@
-
 'use server'
 
-import { createClient } from '@/utils/supabase/server'
-import { redirect } from 'next/navigation'
+import {createClient} from '@/utils/supabase/server'
+import {redirect} from 'next/navigation'
 
 export async function createTrip(formData: FormData) {
-    // 1. Extract and validate form data
     const name = String(formData.get('name') ?? '').trim()
     const destination = String(formData.get('destination') ?? '').trim()
     const description = String(formData.get('description') ?? '').trim()
@@ -14,12 +12,10 @@ export async function createTrip(formData: FormData) {
         throw new Error('Trip name is required.')
     }
 
-    // 2. Create Supabase client
     const supabase = await createClient()
 
-    // 3. Get authenticated user
     const {
-        data: { user },
+        data: {user},
         error: userError,
     } = await supabase.auth.getUser()
 
@@ -27,16 +23,7 @@ export async function createTrip(formData: FormData) {
         redirect('/entry')
     }
 
-    // 4. Log payload for debugging
-    console.log('Trip payload:', {
-        name,
-        destination,
-        description,
-        organizer_id: user.id,
-    })
-
-    // 5. Insert trip into database
-    const { data, error } = await supabase
+    const {data, error} = await supabase
         .from('trips')
         .insert({
             name,
@@ -47,18 +34,14 @@ export async function createTrip(formData: FormData) {
         .select('id')
         .single()
 
-    // 6. Handle database errors
     if (error) {
-        console.error('Supabase insert error:', {
-            message: error.message,
-            code: error.code,
-            details: error.details,
-            hint: error.hint,
-        })
-
+        console.error('Error creating trip:', error)
         throw new Error(`Could not create trip: ${error.message}`)
     }
 
-    // 7. Redirect to created trip
+    if (!data?.id) {
+        throw new Error('Trip was created, but no ID was returned.')
+    }
+
     redirect(`/trips/${data.id}`)
 }
