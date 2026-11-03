@@ -1,9 +1,14 @@
-import { useActionState } from 'react'
-import { User } from 'lucide-react'
+/* eslint-disable @next/next/no-img-element */
+'use client'
+
+import { useActionState, useRef, useState } from 'react'
+import { User, Upload, Lock, X } from 'lucide-react'
 import { signup } from '../actions/auth'
 
-export function SignUpBox({onSwitch} : {onSwitch : () => void}){
+export function SignUpBox({ onSwitch }: { onSwitch: () => void }) {
   const [signup_res, signup_action, pending] = useActionState(signup, null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   return (
     <section className="w-full rounded-2xl bg-slate-800/70 p-8 shadow-2xl backdrop-blur-md sm:p-10">
@@ -13,13 +18,11 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
       </p>
 
       <form className="mt-8 flex flex-col gap-4" action={signup_action}>
-
         <div className="relative">
           <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             name="username"
-            type="username"
-            required
+            type="text"
             autoComplete="username"
             placeholder="Username"
             className="w-full rounded-xl border border-white/15 bg-transparent py-3.5 pl-11 pr-4 text-sm text-white placeholder:text-slate-400 outline-none focus:border-white/40"
@@ -39,6 +42,7 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
         </div>
 
         <div className="relative">
+          <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             name="password"
             type="text"
@@ -50,6 +54,7 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
         </div>
 
         <div className="relative">
+          <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             name="password_conf"
             type="password"
@@ -68,9 +73,9 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
         <button
           type="submit"
           disabled={pending} 
-          className="mt-2 w-full rounded-xl bg-slate-500/80 py-3.5 text-sm font-semibold transition hover:bg-slate-400/80"
+          className="mt-2 w-full rounded-xl bg-slate-500/80 py-3.5 text-sm font-semibold transition hover:bg-slate-400/80 disabled:opacity-50"
         >
-          Sign Up
+          {pending ? 'A criar conta...' : 'Sign Up'}
         </button>
 
         <div className="flex items-center gap-4 text-xs text-slate-400">
@@ -91,7 +96,5 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
         </p>
       </form>
     </section>
-  );
+  )
 }
-
-

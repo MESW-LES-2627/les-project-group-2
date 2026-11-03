@@ -87,6 +87,68 @@ describe('US-3.1 Acceptance Tests: Interactive Map and Pin Dropping', () => {
       })
     })
 
+    it('renders user profile button with username and avatar circle falling back to /no_pic.png when NULL', () => {
+      render(
+        <TripMapContainer
+          currentUserEmail="traveler@planit.app"
+          currentUsername="SigmaDwight"
+          currentUserAvatar={null}
+        />
+      )
+
+      const profileBtn = screen.getByRole('button', { name: /sigmadwight/i })
+      expect(profileBtn).toBeDefined()
+
+      const avatarImg = profileBtn.querySelector('img') as HTMLImageElement
+      expect(avatarImg.getAttribute('src')).toBe('/no_pic.png')
+
+      // Exercise onError fallback
+      avatarImg.src = 'https://broken.image/fail.png'
+      fireEvent.error(avatarImg)
+      expect(avatarImg.getAttribute('src')).toBe('/no_pic.png')
+    })
+
+    it('renders user profile button with custom avatar when present', () => {
+      render(
+        <TripMapContainer
+          currentUserEmail="traveler@planit.app"
+          currentUsername="SigmaDwight"
+          currentUserAvatar="https://supabase.co/storage/profile_pics/user-123.png"
+        />
+      )
+
+      const profileBtn = screen.getByRole('button', { name: /sigmadwight/i })
+      expect(profileBtn).toBeDefined()
+
+      const avatarImg = profileBtn.querySelector('img') as HTMLImageElement
+      expect(avatarImg.getAttribute('src')).toBe(
+        'https://supabase.co/storage/profile_pics/user-123.png'
+      )
+    })
+
+    it('toggles profile card modal when clicking the profile header button', () => {
+      render(
+        <TripMapContainer
+          currentUserEmail="traveler@planit.app"
+          currentUsername="SigmaDwight"
+          currentUserAvatar={null}
+        />
+      )
+
+      const profileBtn = screen.getByRole('button', { name: /sigmadwight/i })
+      expect(screen.queryByRole('dialog', { name: 'Profile' })).toBeNull()
+
+      // Click to open
+      fireEvent.click(profileBtn)
+      expect(screen.getByRole('dialog', { name: 'Profile' })).toBeDefined()
+      expect(screen.getByRole('button', { name: 'Apagar conta' })).toBeDefined()
+      expect(screen.getByRole('button', { name: 'Editar' })).toBeDefined()
+
+      // Click again to close (toggle)
+      fireEvent.click(profileBtn)
+      expect(screen.queryByRole('dialog', { name: 'Profile' })).toBeNull()
+    })
+
     it('renders without currentUserEmail gracefully', async () => {
       render(<TripMapContainer />)
       expect(screen.getByText('PlanIt')).toBeDefined()
