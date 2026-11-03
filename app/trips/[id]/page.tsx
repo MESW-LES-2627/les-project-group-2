@@ -1,5 +1,7 @@
+import {Suspense} from 'react'
 import Link from 'next/link'
 import {redirect} from 'next/navigation'
+import {connection} from 'next/server'
 import {createClient} from '@/utils/supabase/server'
 
 import {updateTrip} from '../actions/update-trip'
@@ -30,9 +32,26 @@ const sections = [
     },
 ]
 
-export default async function TripWorkspacePage({
-                                                    params,
-                                                }: TripWorkspacePageProps) {
+export default function TripWorkspacePage({
+                                              params,
+                                          }: TripWorkspacePageProps) {
+    return (
+        <Suspense
+            fallback={
+                <main className="min-h-screen bg-gray-50 px-6 py-12">
+                    <div className="mx-auto max-w-5xl text-gray-500">
+                        Loading trip...
+                    </div>
+                </main>
+            }
+        >
+            <TripWorkspaceContent params={params}/>
+        </Suspense>
+    )
+}
+
+async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
+    await connection()
     const {id} = await params
 
     const supabase = await createClient()
