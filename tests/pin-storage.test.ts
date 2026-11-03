@@ -54,6 +54,12 @@ describe('Pin Storage Service', () => {
     expect(pins).toEqual([])
   })
 
+  it('handles non-array parsed JSON gracefully', () => {
+    mockStore[getStorageKey('custom-trip')] = JSON.stringify({ not: 'an-array' })
+    const pins = loadPinsForTrip('custom-trip')
+    expect(pins).toEqual([])
+  })
+
   it('saves and loads pins accurately', () => {
     const samplePins: Pin[] = [
       {
@@ -72,6 +78,36 @@ describe('Pin Storage Service', () => {
     savePinsForTrip('trip-abc', samplePins)
     const loaded = loadPinsForTrip('trip-abc')
     expect(loaded).toEqual(samplePins)
+  })
+
+  it('handles save error gracefully when localStorage throws', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubGlobal('localStorage', {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error('QuotaExceeded')
+      },
+      removeItem: () => {},
+      clear: () => {},
+    })
+
+    expect(() => savePinsForTrip('trip-err', DEFAULT_PORTUGAL_PINS)).not.toThrow()
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to save pins to storage:', expect.any(Error))
+  })
+
+  it('handles window undefined in loadPinsForTrip and savePinsForTrip', () => {
+    const originalWindow = global.window
+    try {
+      // Simulate SSR environment
+      // @ts-expect-error deleting window to simulate SSR
+      delete global.window
+
+      expect(loadPinsForTrip('default')).toEqual(DEFAULT_PORTUGAL_PINS)
+      expect(loadPinsForTrip('custom-trip')).toEqual([])
+      expect(() => savePinsForTrip('custom-trip', [])).not.toThrow()
+    } finally {
+      global.window = originalWindow
+    }
   })
 
   it('adds a new pin and assigns unique ID and timestamp', () => {

@@ -1,5 +1,5 @@
 import { useActionState } from 'react'
-import { Eye, EyeOff, Lock, User } from 'lucide-react'
+import { User } from 'lucide-react'
 import { signup } from '../actions/auth'
 
 export function SignUpBox({onSwitch} : {onSwitch : () => void}){
@@ -82,7 +82,8 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
         <p className="mt-4 text-center text-xs text-slate-400">
           Already have an account?{' '}
           <button
-            formAction={onSwitch}
+            type="button"
+            onClick={onSwitch}
             className="font-medium text-sky-300 hover:underline"
           >
             Login 
@@ -92,6 +93,5 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
     </section>
   );
 }
-
 
 

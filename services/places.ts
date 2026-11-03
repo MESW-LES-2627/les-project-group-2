@@ -24,8 +24,8 @@ export async function searchPlaces(
     if (!res.ok) return []
     const data = await res.json()
     return Array.isArray(data) ? data : []
-  } catch (err: any) {
-    if (err?.name === 'AbortError') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === 'AbortError') {
       return []
     }
     console.error('searchPlaces failed:', err)

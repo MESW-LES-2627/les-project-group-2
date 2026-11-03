@@ -6,6 +6,17 @@
 import { NextResponse } from 'next/server'
 import { PlaceSearchResult } from '@/types/map'
 
+interface NominatimItem {
+  place_id?: string | number
+  osm_id?: string | number
+  name?: string
+  display_name?: string
+  lat: string
+  lon: string
+  type?: string
+  class?: string
+}
+
 /**
  * @brief Handles GET requests to search places by textual query.
  * @param request The incoming HTTP request containing the `q` query parameter.
@@ -45,7 +56,7 @@ export async function GET(request: Request) {
       return NextResponse.json<PlaceSearchResult[]>([])
     }
 
-    const results: PlaceSearchResult[] = data.map((item: any) => ({
+    const results: PlaceSearchResult[] = (data as NominatimItem[]).map((item) => ({
       placeId: String(item.place_id || item.osm_id || Math.random()),
       name: item.name || item.display_name?.split(',')[0] || query,
       displayName: item.display_name || '',

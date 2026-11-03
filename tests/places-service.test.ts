@@ -39,6 +39,16 @@ describe('Places Service (Client)', () => {
     expect(res).toEqual(mockResults)
   })
 
+  it('returns empty array if response json is not an array', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ not: 'array' }),
+    } as Response)
+
+    const res = await searchPlaces('Coimbra')
+    expect(res).toEqual([])
+  })
+
   it('handles fetch HTTP error gracefully', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValueOnce({
       ok: false,
@@ -50,9 +60,19 @@ describe('Places Service (Client)', () => {
   })
 
   it('handles network throw gracefully', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network error'))
 
     const res = await searchPlaces('Faro')
+    expect(res).toEqual([])
+  })
+
+  it('handles AbortError quietly and returns empty array', async () => {
+    const abortErr = new Error('The user aborted a request.')
+    abortErr.name = 'AbortError'
+    vi.spyOn(global, 'fetch').mockRejectedValueOnce(abortErr)
+
+    const res = await searchPlaces('Braga')
     expect(res).toEqual([])
   })
 })

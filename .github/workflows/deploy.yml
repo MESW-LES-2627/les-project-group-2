@@ -2,7 +2,9 @@ name: Deploy em Vercel
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - staging
 
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -10,20 +12,26 @@ env:
 
 jobs:
 
-  test: 
-    runs-on: ubuntu-latest 
-    steps: 
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 24 
-      - run: npm i -D vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/jest-dom
-      - run: npm i -D @vitest/coverage-v8
-      - run: npm test 
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
 
 
-  deploy:
-    needs: test 
+  deploy: 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,15 +43,34 @@ jobs:
         with:
           node-version: 24
 
-
       - name: Install Vercel CLI
         run: npm i -g vercel
 
-      - name: Pull Vercel environment
+      # Production deployment (main branch)
+      - name: Pull Vercel environment (Production)
+        if: github.ref == 'refs/heads/main'
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Build
+      - name: Build (Production)
+        if: github.ref == 'refs/heads/main'
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Deploy
+      - name: Deploy (Production)
+        if: github.ref == 'refs/heads/main'
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      # Staging deployment (staging branch)
+      - name: Pull Vercel environment (Staging)
+        if: github.ref == 'refs/heads/staging'
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build (Staging)
+        if: github.ref == 'refs/heads/staging'
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy (Staging)
+        if: github.ref == 'refs/heads/staging'
+        run: |
+          DEPLOY_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} | tail -n 1)
+          echo "Deployed staging to: $DEPLOY_URL"
+          vercel alias set "$DEPLOY_URL" planit2-staging.vercel.app --token=${{ secrets.VERCEL_TOKEN }} || true

@@ -29,16 +29,13 @@ export function SearchBar({ onSelectPlace, placeholder = 'Search places in Portu
   // Debounced search
   useEffect(() => {
     if (query.trim().length < 2) {
-      setResults([])
-      setLoading(false)
-      setIsOpen(false)
       return
     }
 
-    setLoading(true)
     const controller = new AbortController()
 
     const timeout = setTimeout(async () => {
+      setLoading(true)
       try {
         const places = await searchPlaces(query, controller.signal)
         setResults(places)
@@ -93,7 +90,14 @@ export function SearchBar({ onSelectPlace, placeholder = 'Search places in Portu
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value
+            setQuery(val)
+            if (val.trim().length < 2) {
+              setResults([])
+              setIsOpen(false)
+            }
+          }}
           onFocus={() => results.length > 0 && setIsOpen(true)}
           placeholder={placeholder}
           className="w-full bg-transparent py-3 pl-12 pr-10 text-sm text-white placeholder:text-slate-400 outline-none"

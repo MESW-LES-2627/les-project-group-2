@@ -11,5 +11,22 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov', 'html'],
+      include: [
+        'app/**/*.{ts,tsx}',
+        'components/**/*.{ts,tsx}',      
+        'services/**/*.{ts,tsx}',
+        'types/**/*.{ts,tsx}',
+        'utils/**/*.{ts,tsx}'
+      ],
+      thresholds: {
+        lines: 90,
+        //functions: 90,
+        //branches: 90,
+        //statements: 90,
+      },
+    },
   },
 })

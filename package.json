@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run --coverage",
+    "test:unit": "vitest run --dir tests",
+    "test:acceptance": "vitest run --dir acceptanceTests",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:status": "supabase status",
