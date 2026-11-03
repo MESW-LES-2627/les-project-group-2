@@ -1,140 +1,67 @@
 
-'use client'
-
-import { useState, type FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
-
-export type MockTrip = {
-    id: string
-    name: string
-    destination: string
-    description: string
-    organizer: string
-    createdAt: string
-}
+import { createTrip } from './actions'
+import Link from "next/link";
 
 export default function NewTripPage() {
-    const router = useRouter()
-    const [error, setError] = useState('')
-
-    function createTrip(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault()
-        setError('')
-
-        const formData = new FormData(event.currentTarget)
-
-        const name = String(formData.get('name') ?? '').trim()
-        const destination = String(
-            formData.get('destination') ?? ''
-        ).trim()
-        const description = String(
-            formData.get('description') ?? ''
-        ).trim()
-
-        if (!name) {
-            setError('Trip name is required.')
-            return
-        }
-
-        const id = crypto.randomUUID()
-
-        const trip: MockTrip = {
-            id,
-            name,
-            destination,
-            description,
-            organizer: 'You',
-            createdAt: new Date().toISOString(),
-        }
-
-        sessionStorage.setItem(
-            `mock-trip-${id}`,
-            JSON.stringify(trip)
-        )
-
-        router.push(`/trips/${id}`)
-    }
-
     return (
-        <main className="mx-auto w-full max-w-xl p-8">
-            <a
-                href="/dashboard"
-                className="text-sm text-blue-700 hover:underline"
-            >
-                ← Back to dashboard
-            </a>
-
-            <h1 className="mb-2 mt-6 text-3xl font-semibold">
-                Create a trip
-            </h1>
-
-            <p className="mb-6 text-gray-500">
-                Create a shared space for your group to plan the trip.
-            </p>
-
+        <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
             <form
-                onSubmit={createTrip}
-                noValidate
-                className="flex flex-col gap-4"
+                action={createTrip}
+                className="w-full max-w-lg space-y-5 rounded-2xl border border-white/10 bg-slate-900 p-6"
             >
-                <div>
-                    <label htmlFor="name" className="mb-1 block">
-                        Trip name *
-                    </label>
+                <Link
+                    href="/dashboard"
+                    className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+                >
+                    <span aria-hidden="true">←</span>
+                    Back to dashboard
+                </Link>
 
+                <h1 className="text-2xl font-semibold">
+                    Create a new trip
+                </h1>
+
+                <div className="space-y-2">
+                    <label htmlFor="name" className="block text-sm">
+                        Trip name
+                    </label>
                     <input
                         id="name"
                         name="name"
-                        type="text"
-                        maxLength={120}
-                        aria-invalid={Boolean(error)}
-                        aria-describedby={error ? 'name-error' : undefined}
-                        className="w-full rounded-lg border p-3"
-                        placeholder="Summer holidays"
+                        required
+                        placeholder="e.g. Summer in Spain"
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-blue-500"
                     />
-
-                    {error && (
-                        <p
-                            id="name-error"
-                            role="alert"
-                            className="mt-1 text-sm text-red-600"
-                        >
-                            {error}
-                        </p>
-                    )}
                 </div>
 
-                <div>
-                    <label htmlFor="destination" className="mb-1 block">
+                <div className="space-y-2">
+                    <label htmlFor="destination" className="block text-sm">
                         Destination
                     </label>
-
                     <input
                         id="destination"
                         name="destination"
-                        type="text"
-                        className="w-full rounded-lg border p-3"
-                        placeholder="Santiago de Compostela"
+                        placeholder="e.g. Santiago de Compostela"
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-blue-500"
                     />
                 </div>
 
-                <div>
-                    <label htmlFor="description" className="mb-1 block">
+                <div className="space-y-2">
+                    <label htmlFor="description" className="block text-sm">
                         Description
                     </label>
-
                     <textarea
                         id="description"
                         name="description"
                         rows={4}
-                        className="w-full rounded-lg border p-3"
-                        placeholder="What are you planning?"
+                        placeholder="Tell us about the trip..."
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-blue-500"
                     />
                 </div>
 
                 <button
                     type="submit"
-                    className="rounded-full bg-blue-700 px-5 py-3 font-medium text-white hover:bg-blue-800"
+                    className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold transition-colors hover:bg-blue-500"
                 >
                     Create trip
                 </button>
