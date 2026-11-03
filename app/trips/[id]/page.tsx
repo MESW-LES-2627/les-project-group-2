@@ -75,7 +75,7 @@ export default async function TripWorkspacePage({
                         Trip not found
                     </h1>
                     <p className="mt-2 text-gray-500">
-                        This trip does not exist or you don't have permission
+                        This trip does not exist or you don&apos;t have permission
                         to access it.
                     </p>
                     <Link
