@@ -96,18 +96,16 @@ export function ProfileCard({
       'Are you sure you want to delete your account?'
     )
     if (!confirmed) return
+  
+    onClose()
 
     setIsDeleting(true)
     setServerError(null)
 
-    try {
-      const res = await softDeleteAccount()
-      if (res?.error) {
-        setServerError(res.error)
-        setIsDeleting(false)
-      }
-    } catch {
-      // In Next.js, redirect() throws a NEXT_REDIRECT error which is normal behavior
+    const res = await softDeleteAccount()
+    if (res?.error) {
+      setServerError(res.error)
+      setIsDeleting(false)
     }
   }
 
