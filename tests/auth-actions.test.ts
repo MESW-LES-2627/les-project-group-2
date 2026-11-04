@@ -224,7 +224,7 @@ describe('Auth Actions', () => {
 
       const result = await signup(null, formData)
       expect(result).toEqual({
-        error: 'Unable to start a session after sign-up. Please try logging in.',
+        error: 'Verify your email. In case you are already registered, please consider logging in.',
       })
       expect(navigation.redirect).not.toHaveBeenCalled()
     })

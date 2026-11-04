@@ -49,12 +49,12 @@ describe('ProfileCard Component', () => {
     const avatarImg = screen.getByAltText('Explorer') as HTMLImageElement
     expect(avatarImg.getAttribute('src')).toBe('/no_pic.png')
 
-    expect(screen.getByRole('button', { name: 'Apagar conta' })).toBeDefined()
-    expect(screen.getByRole('button', { name: 'Editar' })).toBeDefined()
-    expect(screen.queryByRole('button', { name: 'Guardar' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Delete account' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeDefined()
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
   })
 
-  it('enters edit mode when clicking Editar, replaces buttons with Guardar, and shows editable name', () => {
+  it('enters edit mode when clicking Edit, replaces buttons with Save, and shows editable name', () => {
     render(
       <ProfileCard
         isOpen={true}
@@ -64,13 +64,13 @@ describe('ProfileCard Component', () => {
       />
     )
 
-    const editBtn = screen.getByRole('button', { name: 'Editar' })
+    const editBtn = screen.getByRole('button', { name: 'Edit' })
     fireEvent.click(editBtn)
 
-    // Now in edit mode: Guardar button is present, Apagar conta & Editar are gone
-    expect(screen.getByRole('button', { name: 'Guardar' })).toBeDefined()
-    expect(screen.queryByRole('button', { name: 'Apagar conta' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Editar' })).toBeNull()
+    // Now in edit mode: Save button is present, Delete account & Edit are gone
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDefined()
+    expect(screen.queryByRole('button', { name: 'Delete account' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
 
     const nameInput = screen.getByPlaceholderText('Enter your name') as HTMLInputElement
     expect(nameInput.value).toBe('Explorer')
@@ -79,7 +79,7 @@ describe('ProfileCard Component', () => {
     expect(screen.getByRole('button', { name: 'Change profile picture' })).toBeDefined()
   })
 
-  it('displays red warning "Hey! You can\'t do that" when name is erased and disables Guardar', () => {
+  it('displays red warning "Hey! You can\'t do that" when name is erased and disables Save', () => {
     render(
       <ProfileCard
         isOpen={true}
@@ -89,13 +89,13 @@ describe('ProfileCard Component', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Editar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
     const nameInput = screen.getByPlaceholderText('Enter your name')
 
     fireEvent.change(nameInput, { target: { value: '   ' } })
 
     expect(screen.getByText("Hey! You can't do that")).toBeDefined()
-    const saveBtn = screen.getByRole('button', { name: 'Guardar' }) as HTMLButtonElement
+    const saveBtn = screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement
     expect(saveBtn.disabled).toBe(true)
 
     // Typing a valid name clears the warning
@@ -114,7 +114,7 @@ describe('ProfileCard Component', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Editar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
 
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
     const changePicBtn = screen.getByRole('button', { name: 'Change profile picture' })
@@ -152,7 +152,7 @@ describe('ProfileCard Component', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Editar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
 
     const nameInput = screen.getByPlaceholderText('Enter your name')
     fireEvent.change(nameInput, { target: { value: 'UpdatedExplorer' } })
@@ -161,7 +161,7 @@ describe('ProfileCard Component', () => {
     const fakeFile = new File(['mock content'], 'avatar.png', { type: 'image/png' })
     fireEvent.change(fileInput, { target: { files: [fakeFile] } })
 
-    const saveBtn = screen.getByRole('button', { name: 'Guardar' })
+    const saveBtn = screen.getByRole('button', { name: 'Save' })
     fireEvent.click(saveBtn)
 
     await waitFor(() => {
@@ -173,7 +173,7 @@ describe('ProfileCard Component', () => {
     })
 
     // Exited edit mode
-    expect(screen.queryByRole('button', { name: 'Guardar' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
   })
 
   it('displays server error if save fails', async () => {
@@ -190,8 +190,8 @@ describe('ProfileCard Component', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Editar' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
       expect(screen.getByText('Failed to update profile in database')).toBeDefined()
@@ -211,7 +211,7 @@ describe('ProfileCard Component', () => {
       />
     )
 
-    const deleteBtn = screen.getByRole('button', { name: 'Apagar conta' })
+    const deleteBtn = screen.getByRole('button', { name: 'Delete account' })
     fireEvent.click(deleteBtn)
 
     expect(window.confirm).toHaveBeenCalled()
@@ -232,7 +232,7 @@ describe('ProfileCard Component', () => {
       />
     )
 
-    const deleteBtn = screen.getByRole('button', { name: 'Apagar conta' })
+    const deleteBtn = screen.getByRole('button', { name: 'Delete account' })
     fireEvent.click(deleteBtn)
 
     expect(window.confirm).toHaveBeenCalled()

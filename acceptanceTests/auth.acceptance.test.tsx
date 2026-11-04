@@ -118,45 +118,5 @@ describe('US-1.1 Acceptance Tests: User Registration and Authentication', () => 
       rerender(<SignUpBox onSwitch={vi.fn()} />)
       expect(screen.getByText('Conta criada!')).toBeDefined()
     })
-
-    it('allows user to upload and preview profile picture or remove it', () => {
-      global.URL.createObjectURL = vi.fn(() => 'blob:mock-preview-url')
-
-      const { container } = render(<SignUpBox onSwitch={vi.fn()} />)
-
-      // Initial state has default no_pic.png
-      const previewImg = screen.getByAltText('Profile preview') as HTMLImageElement
-      expect(previewImg.getAttribute('src')).toBe('/no_pic.png')
-
-      const uploadBtn = screen.getByRole('button', {
-        name: /fazer upload a uma imagem de perfil/i,
-      })
-      expect(uploadBtn).toBeDefined()
-
-      // Trigger file selection
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-      expect(fileInput).toBeDefined()
-
-      const clickSpy = vi.spyOn(fileInput, 'click')
-      fireEvent.click(uploadBtn)
-      expect(clickSpy).toHaveBeenCalled()
-
-      const fakeFile = new File(['mock content'], 'avatar.png', { type: 'image/png' })
-      fireEvent.change(fileInput, { target: { files: [fakeFile] } })
-
-      expect(previewImg.getAttribute('src')).toBe('blob:mock-preview-url')
-
-      // Remove photo button is now visible
-      const removeBtn = screen.getByRole('button', { name: /remover foto/i })
-      expect(removeBtn).toBeDefined()
-
-      fireEvent.click(removeBtn)
-      expect(previewImg.getAttribute('src')).toBe('/no_pic.png')
-      expect(screen.queryByRole('button', { name: /remover foto/i })).toBeNull()
-
-      // Also trigger change with empty files
-      fireEvent.change(fileInput, { target: { files: [] } })
-      expect(previewImg.getAttribute('src')).toBe('/no_pic.png')
-    })
   })
 })

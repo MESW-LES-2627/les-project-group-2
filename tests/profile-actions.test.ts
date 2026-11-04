@@ -30,6 +30,7 @@ describe('Profile Actions', () => {
   let mockFromUpdate: ReturnType<typeof vi.fn>
   let mockFromEq: ReturnType<typeof vi.fn>
   let mockFrom: ReturnType<typeof vi.fn>
+  let mockRpc: ReturnType<typeof vi.fn>
   let mockSupabase: unknown
 
   beforeEach(() => {
@@ -44,6 +45,7 @@ describe('Profile Actions', () => {
     mockFromEq = vi.fn().mockResolvedValue({ error: null })
     mockFromUpdate = vi.fn().mockReturnValue({ eq: mockFromEq })
     mockFrom = vi.fn().mockReturnValue({ update: mockFromUpdate })
+    mockRpc = vi.fn().mockResolvedValue({ error: null })
 
     mockSupabase = {
       auth: {
@@ -52,6 +54,7 @@ describe('Profile Actions', () => {
         signOut: mockAuthSignOut,
       },
       from: mockFrom,
+      rpc: mockRpc,
     }
 
     vi.mocked(supabaseServer.createClient).mockResolvedValue(
@@ -74,7 +77,7 @@ describe('Profile Actions', () => {
       formData.append('username', '   ')
 
       const res = await updateProfile(formData)
-      expect(res).toEqual({ error: "Hey! You can't do that" })
+      expect(res).toEqual({ error: "Hey! You can't have an account with no username!" })
     })
 
     it('updates username successfully without updating avatar when no image is provided', async () => {
@@ -164,21 +167,13 @@ describe('Profile Actions', () => {
         'user-xyz',
         expect.anything()
       )
-      expect(mockFromUpdate).toHaveBeenCalledWith({
-        username: 'deleted_user',
-        avatar_url: null,
-      })
-      expect(mockFromEq).toHaveBeenCalledWith('id', 'user-xyz')
-      expect(mockAuthUpdateUser).toHaveBeenCalledWith({
-        data: { status: 'deleted', deleted: true },
-      })
       expect(mockAuthSignOut).toHaveBeenCalled()
       expect(cache.revalidatePath).toHaveBeenCalledWith('/', 'layout')
       expect(navigation.redirect).toHaveBeenCalledWith('/entry')
     })
 
     it('returns error when profile soft-delete update fails in database', async () => {
-      mockFromEq.mockResolvedValueOnce({ error: { message: 'Soft delete DB error' } })
+      vi.mocked(imageLib.removeImage).mockResolvedValue({ error: 'Soft delete DB error' })
 
       const res = await softDeleteAccount()
       expect(res).toEqual({ error: 'Soft delete DB error' })

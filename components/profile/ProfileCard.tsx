@@ -60,7 +60,7 @@ export function ProfileCard({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      setNameError("You can't have an account without a username!")
+      setNameError("Hey! You can't do that")
       return
     }
 
@@ -99,8 +99,6 @@ export function ProfileCard({
 
     setIsDeleting(true)
     setServerError(null)
-
-    onClose()
 
     try {
       const res = await softDeleteAccount()
@@ -233,7 +231,7 @@ export function ProfileCard({
             disabled={isSaving || !name.trim()}
             className="w-full rounded-xl bg-sky-600/90 py-2.5 text-xs font-semibold text-white shadow-lg transition hover:bg-sky-500/90 disabled:opacity-50"
           >
-            {isSaving ? 'Saving' : 'Save'}
+            {isSaving ? 'Saving...' : 'Save'}
           </button>
         ) : (
           <div className="flex w-full gap-3">

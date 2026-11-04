@@ -141,8 +141,8 @@ describe('US-3.1 Acceptance Tests: Interactive Map and Pin Dropping', () => {
       // Click to open
       fireEvent.click(profileBtn)
       expect(screen.getByRole('dialog', { name: 'Profile' })).toBeDefined()
-      expect(screen.getByRole('button', { name: 'Apagar conta' })).toBeDefined()
-      expect(screen.getByRole('button', { name: 'Editar' })).toBeDefined()
+      expect(screen.getByRole('button', { name: 'Delete account' })).toBeDefined()
+      expect(screen.getByRole('button', { name: 'Edit' })).toBeDefined()
 
       // Click again to close (toggle)
       fireEvent.click(profileBtn)
