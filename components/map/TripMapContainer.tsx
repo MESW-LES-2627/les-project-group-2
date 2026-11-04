@@ -11,6 +11,7 @@ import { LogOut, MapPin } from 'lucide-react'
 import { PlaceSearchResult } from '@/types/map'
 import { logout } from '@/app/entry/actions/auth'
 import { SearchBar } from './SearchBar'
+import Link from "next/link";
 
 // Dynamic import of LeafletMap with SSR disabled to prevent `window is not defined`
 const DynamicLeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -81,11 +82,20 @@ export function TripMapContainer({
       {/* Top Floating Header with Search Bar and Sign Out */}
       <header className="absolute top-0 inset-x-0 z-[800] p-4 pointer-events-none flex items-center justify-between gap-3">
         {/* Left: App Logo Badge */}
-        <div className="shrink-0 pointer-events-auto">
+        <div className="shrink-0 pointer-events-auto flex items-center gap-2">
           <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10 text-white text-xs font-semibold shadow-lg backdrop-blur-md">
             <MapPin className="h-4 w-4 text-blue-400" />
             <span className="hidden sm:inline">PlanIt</span>
           </div>
+
+          {/* Left: App new trip */}
+          <Link
+              href="/trips/new"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10  text-white text-xs font-semibold shadow-lg transition-colors"
+          >
+            <span className="text-base leading-none">+</span>
+            <span>New Trip</span>
+          </Link>
         </div>
 
         {/* Center: Simple Search Bar */}
