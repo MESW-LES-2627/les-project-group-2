@@ -2,7 +2,7 @@ import { useActionState } from 'react'
 import { User } from 'lucide-react'
 import { signup } from '../actions/auth'
 
-export function SignUpBox({onSwitch} : {onSwitch : () => void}){
+export function SignUpBox({onSwitch, redirectTo} : {onSwitch : () => void; redirectTo?: string}){
   const [signup_res, signup_action, pending] = useActionState(signup, null)
 
   return (
@@ -13,6 +13,7 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
       </p>
 
       <form className="mt-8 flex flex-col gap-4" action={signup_action}>
+        {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
 
         <div className="relative">
           <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

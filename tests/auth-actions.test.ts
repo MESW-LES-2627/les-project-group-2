@@ -66,6 +66,20 @@ describe('Auth Actions', () => {
       expect(cache.revalidatePath).toHaveBeenCalledWith('/', 'layout')
       expect(navigation.redirect).toHaveBeenCalledWith('/dashboard')
     })
+
+    it('redirects to custom redirectTo destination when valid path is provided', async () => {
+      mockAuth.signInWithPassword.mockResolvedValueOnce({
+        error: null,
+      })
+
+      const formData = new FormData()
+      formData.append('email', 'user@example.com')
+      formData.append('password', 'correct')
+      formData.append('redirectTo', '/trips/join?code=XYZ123')
+
+      await login(null, formData)
+      expect(navigation.redirect).toHaveBeenCalledWith('/trips/join?code=XYZ123')
+    })
   })
 
   describe('signup', () => {
@@ -97,6 +111,21 @@ describe('Auth Actions', () => {
       await signup(null, formData)
       expect(cache.revalidatePath).toHaveBeenCalledWith('/', 'layout')
       expect(navigation.redirect).toHaveBeenCalledWith('/dashboard')
+    })
+
+    it('redirects to custom redirectTo destination when valid path is provided upon signup', async () => {
+      mockAuth.signUp.mockResolvedValueOnce({
+        data: { session: { access_token: 'token123' } },
+        error: null,
+      })
+
+      const formData = new FormData()
+      formData.append('email', 'new@example.com')
+      formData.append('password', 'secret')
+      formData.append('redirectTo', '/trips/join?code=XYZ123')
+
+      await signup(null, formData)
+      expect(navigation.redirect).toHaveBeenCalledWith('/trips/join?code=XYZ123')
     })
 
     it('returns error when signUp succeeds without session', async () => {
