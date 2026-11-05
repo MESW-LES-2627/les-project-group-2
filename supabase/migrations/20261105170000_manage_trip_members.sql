@@ -1,19 +1,21 @@
-create table public.trip_members (
+create table if not exists public.trip_members (
+    id uuid primary key default gen_random_uuid(),
     trip_id uuid not null references public.trips(id) on delete cascade,
     user_id uuid not null references auth.users(id) on delete cascade,
-    role text not null check (role in ('organizer', 'member')),
+    role text not null default 'member' check (role in ('organizer', 'member')),
     joined_at timestamptz not null default now(),
-    primary key (trip_id, user_id)
+    constraint unique_trip_member unique (trip_id, user_id)
 );
 
-create unique index trip_members_one_organizer_per_trip
+create unique index if not exists trip_members_one_organizer_per_trip
     on public.trip_members (trip_id)
     where role = 'organizer';
 
 insert into public.trip_members (trip_id, user_id, role)
 select id, organizer_id, 'organizer'
 from public.trips
-on conflict (trip_id, user_id) do nothing;
+on conflict (trip_id, user_id) do update
+set role = 'organizer';
 
 create function public.add_trip_organizer_as_member()
 returns trigger
@@ -28,6 +30,7 @@ begin
 end;
 $$;
 
+drop trigger if exists trips_add_organizer_membership on public.trips;
 create trigger trips_add_organizer_membership
     after insert on public.trips
     for each row
@@ -103,15 +106,29 @@ grant execute on function public.get_trip_members(uuid) to authenticated;
 alter table public.trip_members enable row level security;
 
 revoke all on public.trip_members from public, anon, authenticated;
-grant select, delete on public.trip_members to authenticated;
+grant select, insert, delete on public.trip_members to authenticated;
 grant all on public.trip_members to service_role;
 
+drop policy if exists "Authenticated users can view trip members" on public.trip_members;
+drop policy if exists "Users can join trips as members" on public.trip_members;
+drop policy if exists "Trip members can remove themselves or organizers can remove members" on public.trip_members;
+drop policy if exists "Trip members can view membership" on public.trip_members;
 create policy "Trip members can view membership"
     on public.trip_members
     for select
     to authenticated
     using (public.is_trip_member(trip_id));
 
+create policy "Users can join trips as members"
+    on public.trip_members
+    for insert
+    to authenticated
+    with check (
+        user_id = (select auth.uid())
+        and role = 'member'
+    );
+
+drop policy if exists "Organizers can remove trip members and members can leave" on public.trip_members;
 create policy "Organizers can remove trip members and members can leave"
     on public.trip_members
     for delete
@@ -123,11 +140,3 @@ create policy "Organizers can remove trip members and members can leave"
             or public.is_trip_organizer(trip_id)
         )
     );
-
-drop policy if exists "Authenticated users can view trips" on public.trips;
-
-create policy "Trip members can view trips"
-    on public.trips
-    for select
-    to authenticated
-    using (public.is_trip_member(id));
