@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { connection } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { TripMapContainer } from '@/components/map/TripMapContainer'
+import { DEFAULT_PORTUGAL_PINS } from '@/services/pin-storage'
 
 /**
  * @file app/trips/[id]/map/page.tsx
@@ -69,6 +70,7 @@ async function TripMapContent({ params }: TripMapPageProps) {
         currentUsername={currentUsername}
         currentUserAvatar={currentUserAvatar}
         cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
+        initialPins={DEFAULT_PORTUGAL_PINS}
       />
     </main>
   )
