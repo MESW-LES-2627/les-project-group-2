@@ -22,6 +22,16 @@ export const DEFAULT_PORTUGAL_PINS: Pin[] = [
     lng: -9.216,
     proposedBy: 'pedro@example.com',
     createdAt: new Date().toISOString(),
+    votes: [
+      {
+        id: 'vote-default-1',
+        pinId: 'pin-default-1',
+        userId: 'pedro@example.com',
+        userEmail: 'pedro@example.com',
+        date: '2026-11-15',
+        createdAt: new Date().toISOString(),
+      },
+    ],
   },
   {
     id: 'pin-default-2',
@@ -34,6 +44,7 @@ export const DEFAULT_PORTUGAL_PINS: Pin[] = [
     lng: -8.6148,
     proposedBy: 'daniel@example.com',
     createdAt: new Date().toISOString(),
+    votes: [],
   },
   {
     id: 'pin-default-3',
@@ -46,6 +57,7 @@ export const DEFAULT_PORTUGAL_PINS: Pin[] = [
     lng: -9.2032,
     proposedBy: 'cassia@example.com',
     createdAt: new Date().toISOString(),
+    votes: [],
   },
 ]
 

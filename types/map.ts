@@ -5,6 +5,15 @@
 
 export type PinCategory = 'sightseeing' | 'food' | 'lodging' | 'activity' | 'other'
 
+export interface PinVote {
+  id: string
+  pinId: string
+  userId: string
+  userEmail: string
+  date?: string
+  createdAt: string
+}
+
 export interface Pin {
   id: string
   tripId: string
@@ -16,6 +25,7 @@ export interface Pin {
   lng: number
   proposedBy: string
   createdAt: string
+  votes?: PinVote[]
 }
 
 export interface PlaceSearchResult {
@@ -144,4 +154,53 @@ export function isValidCoordinate(lat: number, lng: number): boolean {
     lng >= -180 &&
     lng <= 180
   )
+}
+
+/**
+ * @brief Filters votes for a pin based on the specific trip date.
+ * If the pin has a designated date, votes count for that date only.
+ * @param pin The target pin.
+ * @param date Optional override date.
+ * @return Array of valid votes matching the pin's date context.
+ */
+export function getPinVotes(pin: Pin, date?: string): PinVote[] {
+  const votes = pin.votes || []
+  const effectiveDate = date || pin.date
+  if (!effectiveDate) {
+    return votes
+  }
+  return votes.filter((v) => (v.date || pin.date) === effectiveDate)
+}
+
+/**
+ * @brief Computes the vote count for a pin, respecting date constraints.
+ * @param pin The target pin.
+ * @param date Optional date filter.
+ * @return Total vote count.
+ */
+export function getPinVoteCount(pin: Pin, date?: string): number {
+  return getPinVotes(pin, date).length
+}
+
+/**
+ * @brief Resolves list of voters who voted on a pin for the given date.
+ * @param pin The target pin.
+ * @param date Optional date filter.
+ * @return Array of voter emails or identifiers.
+ */
+export function getPinVoters(pin: Pin, date?: string): string[] {
+  return getPinVotes(pin, date).map((v) => v.userEmail)
+}
+
+/**
+ * @brief Checks if a specific user has already voted on a pin for the effective date.
+ * @param pin The target pin.
+ * @param userEmail The email of the candidate user.
+ * @param date Optional date filter.
+ * @return True if user already voted, false otherwise.
+ */
+export function hasUserVoted(pin: Pin, userEmail: string, date?: string): boolean {
+  if (!userEmail) return false
+  const voters = getPinVoters(pin, date)
+  return voters.includes(userEmail)
 }
