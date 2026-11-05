@@ -25,6 +25,11 @@ vi.mock('@/app/trips/actions/delete-trip', () => ({
     deleteTrip: vi.fn(),
 }))
 
+vi.mock('@/app/trips/actions/manage-trip-members', () => ({
+    leaveTrip: vi.fn(),
+    removeTripMember: vi.fn(),
+}))
+
 type TripWorkspacePageProps = {
     params: Promise<{id: string}>
 }
@@ -46,6 +51,7 @@ const trip = {
 describe('Trip workspace page', () => {
     let query: Query
     let getUser: ReturnType<typeof vi.fn>
+    let getTripMembers: ReturnType<typeof vi.fn>
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -63,10 +69,28 @@ describe('Trip workspace page', () => {
             data: {user: {id: 'user-1'}},
             error: null,
         })
+        getTripMembers = vi.fn().mockResolvedValue({
+            data: [
+                {
+                    user_id: 'user-1',
+                    email: 'organizer@example.com',
+                    display_name: 'Organizer',
+                    role: 'organizer',
+                },
+                {
+                    user_id: 'member-2',
+                    email: 'member@example.com',
+                    display_name: 'Trip Member',
+                    role: 'member',
+                },
+            ],
+            error: null,
+        })
 
         vi.mocked(supabaseServer.createClient).mockResolvedValue({
             auth: {getUser},
             from: vi.fn(() => query),
+            rpc: getTripMembers,
         } as never)
         vi.mocked(navigation.redirect).mockImplementation(() => {
             throw new Error('NEXT_REDIRECT')
@@ -126,10 +150,18 @@ describe('Trip workspace page', () => {
         expect(screen.getAllByText('A short break')).toHaveLength(2)
         expect(screen.getByText('You')).toBeTruthy()
         expect(screen.getByText('Edit trip details')).toBeTruthy()
+        expect(screen.getByText('Trip members')).toBeTruthy()
+        expect(screen.getByText('Trip Member')).toBeTruthy()
+        expect(screen.getByText('member@example.com')).toBeTruthy()
+        expect(screen.getByText('organizer')).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Remove member'})).toBeTruthy()
         expect(screen.getByRole('link', {name: /map/i}).getAttribute('href')).toBe(
             '/trips/trip-1/map'
         )
         expect(screen.getByText('Delete this trip')).toBeTruthy()
+        expect(
+            screen.getByText(/transfer the organizer role or delete the trip first/i)
+        ).toBeTruthy()
     })
 
     it('hides organizer controls from other trip members', async () => {
@@ -143,6 +175,8 @@ describe('Trip workspace page', () => {
         expect(screen.getByText('Trip organizer')).toBeTruthy()
         expect(screen.queryByText('Edit trip details')).toBeNull()
         expect(screen.queryByText('Delete this trip')).toBeNull()
+        expect(screen.getByRole('button', {name: 'Leave trip'})).toBeTruthy()
+        expect(screen.queryByRole('button', {name: 'Remove member'})).toBeNull()
     })
 
     it('renders an error message when the trip query fails', async () => {
