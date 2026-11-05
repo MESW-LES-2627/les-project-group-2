@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - staging
+  workflow_dispatch:
 
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -31,8 +32,52 @@ jobs:
         run: npm run build
 
 
-  deploy: 
+  migrate:
+    name: Database Migrations
     runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      # Staging migrations (staging branch)
+      - name: Run Migrations (Staging)
+        if: github.ref == 'refs/heads/staging'
+        run: |
+          if [ -n "${{ secrets.SUPABASE_DB_URL_STAGING }}" ]; then
+            supabase db push --db-url "${{ secrets.SUPABASE_DB_URL_STAGING }}"
+          elif [ -n "${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}" ]; then
+            supabase db push --remote="${{ secrets.SUPABASE_STAGING_PROJECT_ID }}" --password="${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}"
+          else
+            supabase db push --remote="${{ secrets.SUPABASE_STAGING_PROJECT_ID }}"
+          fi
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # Production migrations (main branch)
+      - name: Run Migrations (Production)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          if [ -n "${{ secrets.SUPABASE_DB_URL_PRODUCTION }}" ]; then
+            supabase db push --db-url "${{ secrets.SUPABASE_DB_URL_PRODUCTION }}"
+          elif [ -n "${{ secrets.SUPABASE_PROD_DB_PASSWORD }}" ]; then
+            supabase db push --remote="${{ secrets.SUPABASE_PROD_PROJECT_ID }}" --password="${{ secrets.SUPABASE_PROD_DB_PASSWORD }}"
+          else
+            supabase db push --remote="${{ secrets.SUPABASE_PROD_PROJECT_ID }}"
+          fi
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+
+  deploy: 
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: migrate
     steps:
       - uses: actions/checkout@v4
 
@@ -63,6 +108,16 @@ jobs:
       - name: Pull Vercel environment (Staging)
         if: github.ref == 'refs/heads/staging'
         run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Configure Staging Database Environment
+        if: github.ref == 'refs/heads/staging'
+        run: |
+          if [ -n "${{ secrets.SUPABASE_STAGING_URL }}" ]; then
+            echo "SUPABASE_URL=${{ secrets.SUPABASE_STAGING_URL }}" >> .vercel/.env.preview.local
+          fi
+          if [ -n "${{ secrets.SUPABASE_STAGING_ANON_KEY }}" ]; then
+            echo "SUPABASE_KEY=${{ secrets.SUPABASE_STAGING_ANON_KEY }}" >> .vercel/.env.preview.local
+          fi
 
       - name: Build (Staging)
         if: github.ref == 'refs/heads/staging'
