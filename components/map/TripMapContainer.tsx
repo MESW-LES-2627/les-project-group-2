@@ -2,16 +2,17 @@
 
 /**
  * @file components/map/TripMapContainer.tsx
- * @brief Simplified full-screen Carto Leaflet map with search bar and sign out.
+ * @brief Simplified full-screen Carto Leaflet map with search bar, in-place pin voting, and sign out.
  */
 
 import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { LogOut, MapPin } from 'lucide-react'
-import { PlaceSearchResult } from '@/types/map'
+import { Pin, PlaceSearchResult } from '@/types/map'
 import { logout } from '@/app/entry/actions/auth'
 import { SearchBar } from './SearchBar'
-import Link from "next/link";
+import { PinVoteCard } from './PinVoteCard'
+import Link from 'next/link'
 
 // Dynamic import of LeafletMap with SSR disabled to prevent `window is not defined`
 const DynamicLeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -24,57 +25,86 @@ const DynamicLeafletMap = dynamic(() => import('./LeafletMap'), {
   ),
 })
 
-interface SimplePin {
-  id: string
-  name: string
-  lat: number
-  lng: number
-}
-
 interface TripMapContainerProps {
   currentUserEmail?: string
   cartoApiKey?: string
+  initialPins?: Pin[]
 }
 
 /**
- * @brief Simplified full-screen interactive map with search bar.
+ * @brief Simplified full-screen interactive map with search bar and in-place pin voting.
  * @param props Component properties.
  */
 export function TripMapContainer({
   currentUserEmail,
   cartoApiKey,
+  initialPins = [],
 }: TripMapContainerProps) {
-  const [pins, setPins] = useState<SimplePin[]>([])
+  const [pins, setPins] = useState<Pin[]>(initialPins)
+  const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number; zoom?: number } | null>(null)
 
   /**
    * @brief Handles selecting a place from the search bar, flying to it and adding a marker.
    * @param place The chosen search result.
    */
-  const handleSelectPlace = useCallback((place: PlaceSearchResult) => {
-    const newPin: SimplePin = {
-      id: `pin-${Date.now()}`,
-      name: place.name,
-      lat: place.lat,
-      lng: place.lon,
-    }
-    setPins((prev) => [...prev, newPin])
-    setFlyToTarget({ lat: place.lat, lng: place.lon, zoom: 14 })
-  }, [])
+  const handleSelectPlace = useCallback(
+    (place: PlaceSearchResult) => {
+      const newPin: Pin = {
+        id: `pin-${Date.now()}`,
+        tripId: 'default',
+        name: place.name,
+        category: 'sightseeing',
+        lat: place.lat,
+        lng: place.lon,
+        proposedBy: currentUserEmail || 'You',
+        createdAt: new Date().toISOString(),
+        votes: [],
+      }
+      setPins((prev) => [...prev, newPin])
+      setSelectedPin(newPin)
+      setFlyToTarget({ lat: place.lat, lng: place.lon, zoom: 14 })
+    },
+    [currentUserEmail]
+  )
 
   /**
-   * @brief Handles map click: drops a pin at clicked coordinates.
+   * @brief Handles map click: drops a pin at clicked coordinates and opens its voting card.
    * @param lat Latitude of clicked point.
    * @param lng Longitude of clicked point.
    */
-  const handleMapClick = useCallback((lat: number, lng: number) => {
-    const newPin: SimplePin = {
-      id: `pin-${Date.now()}`,
-      name: `Point (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
-      lat,
-      lng,
-    }
-    setPins((prev) => [...prev, newPin])
+  const handleMapClick = useCallback(
+    (lat: number, lng: number) => {
+      const newPin: Pin = {
+        id: `pin-${Date.now()}`,
+        tripId: 'default',
+        name: `Point (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
+        category: 'sightseeing',
+        lat,
+        lng,
+        proposedBy: currentUserEmail || 'You',
+        createdAt: new Date().toISOString(),
+        votes: [],
+      }
+      setPins((prev) => [...prev, newPin])
+      setSelectedPin(newPin)
+    },
+    [currentUserEmail]
+  )
+
+  /**
+   * @brief Handles clicking an existing marker on the map to inspect or vote on it.
+   */
+  const handlePinClick = useCallback((pin: Pin) => {
+    setSelectedPin(pin)
+  }, [])
+
+  /**
+   * @brief Updates pin state when votes are cast or removed.
+   */
+  const handleVoteChange = useCallback((updatedPin: Pin) => {
+    setPins((prev) => prev.map((p) => (p.id === updatedPin.id ? updatedPin : p)))
+    setSelectedPin(updatedPin)
   }, [])
 
   return (
@@ -90,8 +120,8 @@ export function TripMapContainer({
 
           {/* Left: App new trip */}
           <Link
-              href="/trips/new"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10  text-white text-xs font-semibold shadow-lg transition-colors"
+            href="/trips/new"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10 text-white text-xs font-semibold shadow-lg transition-colors"
           >
             <span className="text-base leading-none">+</span>
             <span>New Trip</span>
@@ -128,19 +158,23 @@ export function TripMapContainer({
 
       {/* Full-screen Leaflet Map */}
       <DynamicLeafletMap
-        pins={pins.map((p) => ({
-          ...p,
-          tripId: 'default',
-          category: 'sightseeing',
-          proposedBy: currentUserEmail || 'You',
-          createdAt: new Date().toISOString(),
-        }))}
+        pins={pins}
         layerId="voyager"
         apiKey={cartoApiKey || process.env.NEXT_PUBLIC_CARTO_API_KEY}
         flyToTarget={flyToTarget}
         onMapClick={handleMapClick}
-        onPinClick={() => {}}
+        onPinClick={handlePinClick}
       />
+
+      {/* In-Place Pin Details and Voting Card */}
+      {selectedPin && (
+        <PinVoteCard
+          pin={selectedPin}
+          currentUserEmail={currentUserEmail}
+          onVoteChange={handleVoteChange}
+          onClose={() => setSelectedPin(null)}
+        />
+      )}
     </div>
   )
 }
