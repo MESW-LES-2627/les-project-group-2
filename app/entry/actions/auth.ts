@@ -21,8 +21,11 @@ export async function login(
     return { error: error.message }
   }
 
+  const rawRedirect = formData.get('redirectTo') as string
+  const destination = rawRedirect && rawRedirect.startsWith('/') ? rawRedirect : '/dashboard'
+
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  redirect(destination)
 }
 
 export async function signup(
@@ -43,8 +46,11 @@ export async function signup(
   // Email confirmations are disabled, so Supabase returns an active session
   // and the new user can enter the application immediately.
   if (data.session) {
+    const rawRedirect = formData.get('redirectTo') as string
+    const destination = rawRedirect && rawRedirect.startsWith('/') ? rawRedirect : '/dashboard'
+
     revalidatePath('/', 'layout')
-    redirect('/dashboard')
+    redirect(destination)
   }
 
   return { error: 'Unable to start a session after sign-up. Please try logging in.' }

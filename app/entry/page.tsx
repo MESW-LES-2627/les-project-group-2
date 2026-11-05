@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { CalendarDays, Heart, Map, Users } from 'lucide-react'
 import { LoginBox } from './boxes/login'
 import { SignUpBox } from './boxes/signup'
@@ -13,7 +14,17 @@ const features = [
 ]
 
 export default function EntryPage() {
+  return (
+    <Suspense fallback={null}>
+      <EntryPageContent />
+    </Suspense>
+  )
+}
+
+function EntryPageContent() {
   const [view, setView] = useState('login')
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams?.get('redirectTo') || undefined
 
   return (
     <main className="relative min-h-screen bg-slate-950 bg-[url('/background.png')] bg-cover bg-center text-white">
@@ -49,8 +60,8 @@ export default function EntryPage() {
         </section>
 
         <>
-          {view === 'login' && <LoginBox onSwitch={() => setView('signup')} />}
-          {view === 'signup' && <SignUpBox onSwitch={() => setView('login')} />}
+          {view === 'login' && <LoginBox onSwitch={() => setView('signup')} redirectTo={redirectTo} />}
+          {view === 'signup' && <SignUpBox onSwitch={() => setView('login')} redirectTo={redirectTo} />}
         </>
 
       </div>
