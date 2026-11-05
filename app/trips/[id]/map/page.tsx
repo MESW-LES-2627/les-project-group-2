@@ -59,10 +59,31 @@ async function TripMapContent({ params }: TripMapPageProps) {
     redirect('/dashboard')
   }
 
+  let userEmail = user.email ?? 'member@planit.app'
+  let currentUsername: string | undefined
+  let currentUserAvatar: string | null = null
+
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username, avatar_url')
+      .eq('id', user.id)
+      .single()
+
+    if (profile) {
+      currentUsername = profile.username ?? undefined
+      currentUserAvatar = profile.avatar_url ?? null
+    }
+  } catch {
+    // Keep the map usable when profile data is unavailable.
+  }
+
   return (
     <main className="w-screen h-screen overflow-hidden">
       <TripMapContainer
-        currentUserEmail={user.email}
+        currentUserEmail={userEmail}
+        currentUsername={currentUsername}
+        currentUserAvatar={currentUserAvatar}
         cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
       />
     </main>

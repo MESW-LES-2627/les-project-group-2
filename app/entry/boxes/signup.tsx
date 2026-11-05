@@ -1,76 +1,144 @@
-import { useActionState } from 'react'
-import { User } from 'lucide-react'
+/* eslint-disable @next/next/no-img-element */
+'use client'
+
+import { useActionState, useRef, useState } from 'react'
+import { User, Upload, Lock, X } from 'lucide-react'
 import { signup } from '../actions/auth'
 
-export function SignUpBox({onSwitch} : {onSwitch : () => void}){
+export function SignUpBox({
+  onSwitch,
+  redirectTo,
+}: {
+  onSwitch: () => void
+  redirectTo?: string
+}) {
   const [signup_res, signup_action, pending] = useActionState(signup, null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   return (
     <section className="w-full rounded-2xl bg-slate-800/70 p-8 shadow-2xl backdrop-blur-md sm:p-10">
-      <h2 className="text-2xl font-bold">Hello new traveller!</h2>
+      <h2 className="text-2xl font-bold text-white">Hello new traveller!</h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-300">
-        What should we call you by? 
+        What should we call you by?
       </p>
 
       <form className="mt-8 flex flex-col gap-4" action={signup_action}>
+        {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
 
         <div className="relative">
           <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
+            type="text"
             name="username"
-            type="username"
+            placeholder="Username"
             required
             autoComplete="username"
-            placeholder="Username"
-            className="w-full rounded-xl border border-white/15 bg-transparent py-3.5 pl-11 pr-4 text-sm text-white placeholder:text-slate-400 outline-none focus:border-white/40"
+            className="w-full rounded-xl bg-slate-700/60 py-3.5 pl-11 pr-4 text-sm text-white placeholder-slate-400 outline-none ring-1 ring-slate-600 focus:ring-2 focus:ring-emerald-400"
           />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-slate-300">
+            Profile Picture (Optional)
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              name="profile_pic"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  setPreviewUrl(URL.createObjectURL(file))
+                } else {
+                  setPreviewUrl(null)
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 rounded-xl bg-slate-700/60 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700 hover:text-white"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Upload picture
+            </button>
+            {previewUrl && (
+              <div className="relative flex items-center">
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="h-10 w-10 rounded-full border border-slate-600 object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewUrl(null)
+                    if (fileInputRef.current) fileInputRef.current.value = ''
+                  }}
+                  className="absolute -right-1 -top-1 rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="relative">
           <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
-            name="email"
             type="email"
+            name="email"
+            placeholder="Email"
             required
             autoComplete="email"
-            placeholder="Email"
-            className="w-full rounded-xl border border-white/15 bg-transparent py-3.5 pl-11 pr-4 text-sm text-white placeholder:text-slate-400 outline-none focus:border-white/40"
+            className="w-full rounded-xl bg-slate-700/60 py-3.5 pl-11 pr-4 text-sm text-white placeholder-slate-400 outline-none ring-1 ring-slate-600 focus:ring-2 focus:ring-emerald-400"
           />
         </div>
 
         <div className="relative">
+          <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
-            name="password"
-            type="text"
-            required
-            autoComplete="current-password"
-            placeholder="Password"
-            className="w-full rounded-xl border border-white/15 bg-transparent py-3.5 pl-11 pr-11 text-sm text-white placeholder:text-slate-400 outline-none focus:border-white/40"
-          />
-        </div>
-
-        <div className="relative">
-          <input
-            name="password_conf"
             type="password"
+            name="password"
+            placeholder="Password"
             required
-            autoComplete="current-password"
+            autoComplete="new-password"
+            className="w-full rounded-xl bg-slate-700/60 py-3.5 pl-11 pr-4 text-sm text-white placeholder-slate-400 outline-none ring-1 ring-slate-600 focus:ring-2 focus:ring-emerald-400"
+          />
+        </div>
+
+        <div className="relative">
+          <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="password"
+            name="password_conf"
             placeholder="Confirm password"
-            className="w-full rounded-xl border border-white/15 bg-transparent py-3.5 pl-11 pr-11 text-sm text-white placeholder:text-slate-400 outline-none focus:border-white/40"
+            required
+            autoComplete="new-password"
+            className="w-full rounded-xl bg-slate-700/60 py-3.5 pl-11 pr-4 text-sm text-white placeholder-slate-400 outline-none ring-1 ring-slate-600 focus:ring-2 focus:ring-emerald-400"
           />
         </div>
 
         <>
-          {signup_res?.error && <p className="text-sm text-red-400">{signup_res?.error}</p>}
-          {signup_res?.message && <p className="text-sm text-green-400">{signup_res?.message}</p>}
+          {signup_res?.error && (
+            <p className="text-xs text-red-400">{signup_res.error}</p>
+          )}
+          {signup_res?.message && (
+            <p className="text-xs text-green-400">{signup_res.message}</p>
+          )}
         </>
 
         <button
           type="submit"
-          disabled={pending} 
-          className="mt-2 w-full rounded-xl bg-slate-500/80 py-3.5 text-sm font-semibold transition hover:bg-slate-400/80"
+          disabled={pending}
+          className="mt-2 w-full rounded-xl bg-emerald-500 py-3.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-400 disabled:opacity-50"
         >
-          Sign Up
+          {pending ? 'Signing up...' : 'Sign Up'}
         </button>
 
         <div className="flex items-center gap-4 text-xs text-slate-400">
@@ -84,14 +152,12 @@ export function SignUpBox({onSwitch} : {onSwitch : () => void}){
           <button
             type="button"
             onClick={onSwitch}
-            className="font-medium text-sky-300 hover:underline"
+            className="font-medium text-emerald-400 hover:underline"
           >
-            Login 
+            Login
           </button>
         </p>
       </form>
     </section>
-  );
+  )
 }
-
-

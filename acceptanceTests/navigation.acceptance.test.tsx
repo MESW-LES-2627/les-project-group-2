@@ -49,6 +49,7 @@ function createMockSupabase(user: Partial<User> | null): unknown {
             error: null,
         }),
         select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({data: null, error: null}),
     }
 
     return {
