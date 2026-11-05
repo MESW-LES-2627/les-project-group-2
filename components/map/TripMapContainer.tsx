@@ -1,8 +1,9 @@
+/* eslint-disable @next/next/no-img-element */
 'use client'
 
 /**
  * @file components/map/TripMapContainer.tsx
- * @brief Simplified full-screen Carto Leaflet map with search bar, in-place pin voting, and sign out.
+ * @brief Simplified full-screen Carto Leaflet map with search bar, user profile badge, in-place pin voting, and sign out.
  */
 
 import { useState, useCallback } from 'react'
@@ -12,6 +13,7 @@ import { Pin, PlaceSearchResult } from '@/types/map'
 import { logout } from '@/app/entry/actions/auth'
 import { SearchBar } from './SearchBar'
 import { PinVoteCard } from './PinVoteCard'
+import { ProfileCard } from '@/components/profile'
 import Link from 'next/link'
 
 // Dynamic import of LeafletMap with SSR disabled to prevent `window is not defined`
@@ -27,22 +29,33 @@ const DynamicLeafletMap = dynamic(() => import('./LeafletMap'), {
 
 interface TripMapContainerProps {
   currentUserEmail?: string
+  currentUsername?: string
+  currentUserAvatar?: string | null
   cartoApiKey?: string
   initialPins?: Pin[]
 }
 
 /**
- * @brief Simplified full-screen interactive map with search bar and in-place pin voting.
+ * @brief Simplified full-screen interactive map with search bar, profile drawer, and in-place pin voting.
  * @param props Component properties.
  */
 export function TripMapContainer({
   currentUserEmail,
+  currentUsername,
+  currentUserAvatar,
   cartoApiKey,
   initialPins = [],
 }: TripMapContainerProps) {
   const [pins, setPins] = useState<Pin[]>(initialPins)
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number; zoom?: number } | null>(null)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [updatedUsername, setUpdatedUsername] = useState<string | null>(null)
+  const [updatedAvatarUrl, setUpdatedAvatarUrl] = useState<string | null | undefined>(undefined)
+
+  const username = updatedUsername ?? currentUsername
+  const avatarUrl = updatedAvatarUrl !== undefined ? updatedAvatarUrl : currentUserAvatar
+  const displayName = username || currentUserEmail
 
   /**
    * @brief Handles selecting a place from the search bar, flying to it and adding a marker.
@@ -71,7 +84,6 @@ export function TripMapContainer({
   /**
    * @brief Handles map click: drops a pin at clicked coordinates and opens its voting card.
    * @param lat Latitude of clicked point.
-   * @param lng Longitude of clicked point.
    */
   const handleMapClick = useCallback(
     (lat: number, lng: number) => {
@@ -136,14 +148,32 @@ export function TripMapContainer({
           />
         </div>
 
-        {/* Right: User Email & Sign Out */}
+        {/* Right: User Profile Button & Sign Out */}
         <div className="shrink-0 pointer-events-auto flex items-center gap-2">
-          {currentUserEmail && (
-            <span className="hidden md:inline text-xs text-slate-300 px-3 py-2 rounded-2xl bg-slate-900/80 border border-white/10 backdrop-blur-md">
-              {currentUserEmail}
-            </span>
+          {displayName && (
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen((prev) => !prev)}
+              aria-expanded={isProfileOpen}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
+              title={displayName}
+            >
+              <span className="relative flex h-6 w-6 shrink-0 overflow-hidden rounded-full border border-white/20 bg-slate-800">
+                <img
+                  src={avatarUrl || '/no_pic.png'}
+                  alt={displayName}
+                  onError={(e) => {
+                    e.currentTarget.src = '/no_pic.png'
+                  }}
+                  className="h-full w-full object-cover"
+                />
+              </span>
+              <span className="hidden md:inline font-medium text-slate-200">
+                {displayName}
+              </span>
+            </button>
           )}
-          <form action={logout}>
+          <form action={async () => { await logout() }}>
             <button
               type="submit"
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
@@ -155,6 +185,28 @@ export function TripMapContainer({
           </form>
         </div>
       </header>
+
+      {/* Center Profile Modal Component */}
+      {isProfileOpen && (
+        <div className="absolute inset-0 z-[850] flex items-center justify-center p-4 pointer-events-none">
+          <div className="pointer-events-auto">
+            <ProfileCard
+              key={isProfileOpen ? 'open' : 'closed'}
+              isOpen={isProfileOpen}
+              onClose={() => setIsProfileOpen(false)}
+              currentUserEmail={currentUserEmail}
+              currentUsername={username}
+              currentUserAvatar={avatarUrl}
+              onProfileUpdate={({ username: newUsername, avatarUrl: newAvatarUrl }) => {
+                setUpdatedUsername(newUsername)
+                if (newAvatarUrl !== undefined) {
+                  setUpdatedAvatarUrl(newAvatarUrl)
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Full-screen Leaflet Map */}
       <DynamicLeafletMap

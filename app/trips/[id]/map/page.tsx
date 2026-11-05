@@ -35,6 +35,9 @@ async function TripMapContent({ params }: TripMapPageProps) {
   await params
 
   let userEmail = 'member@planit.app'
+  let currentUsername: string | undefined
+  let currentUserAvatar: string | null = null
+
   try {
     const supabase = await createClient()
     const {
@@ -42,6 +45,19 @@ async function TripMapContent({ params }: TripMapPageProps) {
     } = await supabase.auth.getUser()
     if (user?.email) {
       userEmail = user.email
+
+      if (typeof supabase.from === 'function') {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username, avatar_url')
+          .eq('id', user.id)
+          .single()
+
+        if (profile) {
+          currentUsername = profile.username ?? undefined
+          currentUserAvatar = profile.avatar_url ?? null
+        }
+      }
     }
   } catch {
     // Fallback if supabase is unreachable
@@ -51,6 +67,8 @@ async function TripMapContent({ params }: TripMapPageProps) {
     <main className="w-screen h-screen overflow-hidden">
       <TripMapContainer
         currentUserEmail={userEmail}
+        currentUsername={currentUsername}
+        currentUserAvatar={currentUserAvatar}
         cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
         initialPins={DEFAULT_PORTUGAL_PINS}
       />
