@@ -17,7 +17,7 @@ from public.trips
 on conflict (trip_id, user_id) do update
 set role = 'organizer';
 
-create function public.add_trip_organizer_as_member()
+create or replace function public.add_trip_organizer_as_member()
 returns trigger
 language plpgsql
 security definer
@@ -25,7 +25,8 @@ set search_path = ''
 as $$
 begin
     insert into public.trip_members (trip_id, user_id, role)
-    values (new.id, new.organizer_id, 'organizer');
+    values (new.id, new.organizer_id, 'organizer')
+    on conflict (trip_id, user_id) do nothing;
     return new;
 end;
 $$;
@@ -36,7 +37,7 @@ create trigger trips_add_organizer_membership
     for each row
     execute function public.add_trip_organizer_as_member();
 
-create function public.is_trip_member(p_trip_id uuid)
+create or replace function public.is_trip_member(p_trip_id uuid)
 returns boolean
 language sql
 stable
@@ -51,7 +52,7 @@ as $$
     );
 $$;
 
-create function public.is_trip_organizer(p_trip_id uuid)
+create or replace function public.is_trip_organizer(p_trip_id uuid)
 returns boolean
 language sql
 stable
@@ -66,7 +67,7 @@ as $$
     );
 $$;
 
-create function public.get_trip_members(p_trip_id uuid)
+create or replace function public.get_trip_members(p_trip_id uuid)
 returns table (
     user_id uuid,
     email text,
@@ -82,6 +83,7 @@ as $$
         users.id,
         users.email,
         coalesce(
+            nullif(profiles.username, ''),
             nullif(users.raw_user_meta_data ->> 'full_name', ''),
             nullif(users.raw_user_meta_data ->> 'name', ''),
             users.email,
@@ -90,6 +92,7 @@ as $$
         memberships.role
     from public.trip_members as memberships
     join auth.users as users on users.id = memberships.user_id
+    left join public.profiles as profiles on profiles.id = users.id
     where memberships.trip_id = p_trip_id
       and public.is_trip_member(p_trip_id)
     order by (memberships.role = 'organizer') desc, 3;
