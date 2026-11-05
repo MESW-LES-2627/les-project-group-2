@@ -143,7 +143,7 @@ export function TripMapContainer({
               </span>
             </button>
           )}
-          <form action={logout}>
+          <form action={async () => { await logout() }}>
             <button
               type="submit"
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"

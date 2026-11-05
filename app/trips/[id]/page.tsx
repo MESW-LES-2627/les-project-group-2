@@ -6,6 +6,7 @@ import {createClient} from '@/utils/supabase/server'
 
 import {updateTrip} from '../actions/update-trip'
 import {deleteTrip} from '../actions/delete-trip'
+import {InviteSettings} from './invite-settings'
 
 type TripWorkspacePageProps = {
     params: Promise<{ id: string }>
@@ -238,6 +239,9 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                                     </div>
                                 </form>
                             </details>
+
+                            {/* Trip Onboarding & Invite Link/Code */}
+                            <InviteSettings tripId={trip.id} initialInviteCode={trip.invite_code} />
                         </div>
                     )}
                 </header>

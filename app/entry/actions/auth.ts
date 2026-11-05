@@ -5,7 +5,10 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
 import { savePicture } from '@/app/image_manager/image_lib'
 
-export type AuthState = { error?: string; message?: string } | null
+export type AuthState = {
+  error?: string
+  message?: string
+} | null
 
 export async function login(
   prevState: AuthState,
@@ -20,9 +23,12 @@ export async function login(
 
   if (error) { return { error: error.message }}
 
+  const rawRedirect = formData.get('redirectTo') as string
+  const destination = rawRedirect && rawRedirect.startsWith('/') ? rawRedirect : '/dashboard'
+
   revalidatePath('/', 'layout')
   revalidatePath('/dashboard')
-  redirect('/dashboard')
+  redirect(destination)
 }
 
 export async function signup(
@@ -86,13 +92,22 @@ export async function signup(
     return { error: profileError.message }
   }
 
+  const rawRedirect = formData.get('redirectTo') as string
+  const destination = rawRedirect && rawRedirect.startsWith('/') ? rawRedirect : '/dashboard'
+
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  redirect(destination)
 }
 
 export async function logout() {
   const supabase = await createClient()
-  await supabase.auth.signOut()
+
+  const { error } = await supabase.auth.signOut()
+
+  if (error) {
+    return { error: error.message }
+  }
+
   revalidatePath('/', 'layout')
   redirect('/entry')
 }
