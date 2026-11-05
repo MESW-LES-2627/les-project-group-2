@@ -1,7 +1,9 @@
 import { Suspense } from 'react'
 import { connection } from 'next/server'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { TripMapContainer } from '@/components/map/TripMapContainer'
+import { DEFAULT_PORTUGAL_PINS } from '@/services/pin-storage'
 
 /**
  * @file app/trips/[id]/map/page.tsx
@@ -31,26 +33,60 @@ export default async function TripMapPage({ params }: TripMapPageProps) {
  */
 async function TripMapContent({ params }: TripMapPageProps) {
   await connection()
-  await params
+  const { id } = await params
 
-  let userEmail = 'member@planit.app'
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    redirect('/entry')
+  }
+
+  const { data: trip, error: tripError } = await supabase
+    .from('trips')
+    .select('id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (tripError) {
+    console.error('Error checking trip access:', tripError)
+    throw new Error(`Could not check trip access: ${tripError.message}`)
+  }
+
+  if (!trip) {
+    redirect('/dashboard')
+  }
+
+  const userEmail = user.email ?? 'member@planit.app'
+  let currentUsername: string | undefined
+  let currentUserAvatar: string | null = null
+
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (user?.email) {
-      userEmail = user.email
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username, avatar_url')
+      .eq('id', user.id)
+      .single()
+
+    if (profile) {
+      currentUsername = profile.username ?? undefined
+      currentUserAvatar = profile.avatar_url ?? null
     }
   } catch {
-    // Fallback if supabase is unreachable
+    // Keep the map usable when profile data is unavailable.
   }
 
   return (
     <main className="w-screen h-screen overflow-hidden">
       <TripMapContainer
         currentUserEmail={userEmail}
+        currentUsername={currentUsername}
+        currentUserAvatar={currentUserAvatar}
         cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
+        initialPins={DEFAULT_PORTUGAL_PINS}
       />
     </main>
   )

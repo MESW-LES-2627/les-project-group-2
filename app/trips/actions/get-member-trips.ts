@@ -26,7 +26,7 @@ export interface UserMemberTrip {
 
 /**
  * @brief Fetches all trips where the current user is associated as a member in `trip_memebers`.
- * Resolves user -> profiles.shell_id -> trip_memebers.member_id -> trips -> trip_dates.
+ * Resolves user -> trip_memebers.user_id -> trips -> trip_dates.
  * Dates are sorted chronologically.
  */
 export async function getUserMemberTrips(): Promise<UserMemberTrip[]> {
@@ -46,27 +46,11 @@ export async function getUserMemberTrips(): Promise<UserMemberTrip[]> {
       return []
     }
 
-    // Step 1: Query user's profile to retrieve shell_id
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, shell_id')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (profileError) {
-      console.error('Error fetching profile for member trips:', profileError)
-      return []
-    }
-
-    if (!profile || !profile.shell_id) {
-      return []
-    }
-
-    // Step 2: Query trip_memebers for this member_id with joined trips and trip_dates
+    // Step 1: Query trip_memebers for this member_id with joined trips and trip_dates
     const { data: memberRows, error: memberError } = await supabase
       .from('trip_members')
       .select(`
-        member_id,
+        user_id,
         trip_id,
         trips (
           id,
@@ -83,7 +67,7 @@ export async function getUserMemberTrips(): Promise<UserMemberTrip[]> {
           )
         )
       `)
-      .eq('member_id', profile.shell_id)
+      .eq('user_id', user.id)
 
     if (memberError) {
       console.error('Error fetching member trips:', memberError)
