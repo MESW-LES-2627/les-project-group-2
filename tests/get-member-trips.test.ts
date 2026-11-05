@@ -100,7 +100,7 @@ describe('getUserMemberTrips', () => {
 
     const result = await getUserMemberTrips()
     expect(result).toEqual([])
-    expect(mockFrom).toHaveBeenCalledWith('profiles')
+    expect(mockFrom).toHaveBeenCalledWith('trip_members')
   })
 
   it('returns an empty array if user profile does not exist or has no shell_id', async () => {

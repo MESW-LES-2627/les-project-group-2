@@ -135,7 +135,6 @@ export function TripMapContainer({
             <span className="hidden sm:inline">PlanIt</span>
           </div>
 
-<<<<<<< HEAD
           {/* Button to open member trips card */}
           <button
             type="button"
@@ -148,12 +147,6 @@ export function TripMapContainer({
                 : 'bg-slate-900/85 hover:bg-slate-800 border-white/10'
             }`}
             title="My Trips"
-=======
-          {/* Left: App new trip */}
-          <Link
-            href="/trips/new"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10 text-white text-xs font-semibold shadow-lg transition-colors"
->>>>>>> staging
           >
             <Compass className="h-3.5 w-3.5 text-blue-400" />
             <span>Trips</span>
@@ -206,14 +199,12 @@ export function TripMapContainer({
         </div>
       </header>
 
-<<<<<<< HEAD
       {/* Floating Member Trips Card */}
       <TripsCard
         isOpen={isTripsCardOpen}
         onClose={() => setIsTripsCardOpen(false)}
         initialTrips={initialTrips}
       />
-=======
       {/* Center Profile Modal Component */}
       {isProfileOpen && (
         <div className="absolute inset-0 z-[850] flex items-center justify-center p-4 pointer-events-none">
@@ -235,7 +226,6 @@ export function TripMapContainer({
           </div>
         </div>
       )}
->>>>>>> staging
 
       {/* Full-screen Leaflet Map */}
       <DynamicLeafletMap
