@@ -108,6 +108,17 @@ describe('US-1.3 Acceptance Tests: Group Onboarding via Link/Code', () => {
         if (table === 'trip_members') return mockMembersQuery
         return mockTripsQuery
       }),
+      rpc: vi.fn().mockResolvedValue({
+        data: [
+          {
+            user_id: 'user-organizer',
+            email: null,
+            display_name: 'Organizer',
+            role: 'organizer',
+          },
+        ],
+        error: null,
+      }),
     } as unknown as SupabaseClient)
 
     vi.mocked(navigation.redirect).mockImplementation((url: string) => {
