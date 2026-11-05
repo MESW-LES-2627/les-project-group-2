@@ -126,6 +126,13 @@ jobs:
       - name: Deploy (Staging)
         if: github.ref == 'refs/heads/staging'
         run: |
-          DEPLOY_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} | tail -n 1)
-          echo "Deployed staging to: $DEPLOY_URL"
-          vercel alias set "$DEPLOY_URL" planit2-staging.vercel.app --token=${{ secrets.VERCEL_TOKEN }} || true
+          DEPLOY_OUTPUT=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} 2>&1)
+          echo "$DEPLOY_OUTPUT"
+          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -Eo 'https://[a-zA-Z0-9.-]+\.vercel\.app' | grep -v 'planit2-staging' | head -n 1)
+          echo "Extracted deployment URL: $DEPLOY_URL"
+          if [ -n "$DEPLOY_URL" ]; then
+            vercel alias set "$DEPLOY_URL" planit2-staging.vercel.app --token=${{ secrets.VERCEL_TOKEN }} --scope=${{ secrets.VERCEL_ORG_ID }}
+          else
+            echo "Failed to extract deployment URL"
+            exit 1
+          fi
