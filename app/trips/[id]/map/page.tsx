@@ -59,7 +59,7 @@ async function TripMapContent({ params }: TripMapPageProps) {
     redirect('/dashboard')
   }
 
-  let userEmail = user.email ?? 'member@planit.app'
+  const userEmail = user.email ?? 'member@planit.app'
   let currentUsername: string | undefined
   let currentUserAvatar: string | null = null
 
