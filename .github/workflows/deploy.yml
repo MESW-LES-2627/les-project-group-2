@@ -126,6 +126,24 @@ jobs:
       - name: Deploy (Staging)
         if: github.ref == 'refs/heads/staging'
         run: |
-          DEPLOY_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} | tail -n 1)
-          echo "Deployed staging to: $DEPLOY_URL"
-          vercel alias set "$DEPLOY_URL" planit2-staging.vercel.app --token=${{ secrets.VERCEL_TOKEN }} || true
+          DEPLOY_OUTPUT=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} 2>&1)
+          echo "$DEPLOY_OUTPUT"
+          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -Eo 'https://[a-zA-Z0-9.-]+\.vercel\.app' | grep -v 'planit2-staging' | head -n 1)
+          echo "Extracted deployment URL: $DEPLOY_URL"
+          if [ -n "$DEPLOY_URL" ]; then
+            DEPLOY_HOST=$(echo "$DEPLOY_URL" | sed 's|https://||')
+            echo "Assigning alias planit2-staging.vercel.app to $DEPLOY_HOST via REST API..."
+            RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+              "https://api.vercel.com/v2/deployments/${DEPLOY_HOST}/aliases?teamId=${{ secrets.VERCEL_ORG_ID }}" \
+              -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{"alias": "planit2-staging.vercel.app"}')
+            echo "API Response: $RESPONSE"
+            if ! echo "$RESPONSE" | grep -qE 'HTTP_STATUS:20[0-9]'; then
+              echo "REST API alias failed, attempting CLI fallback..."
+              vercel alias set "$DEPLOY_URL" planit2-staging.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
+            fi
+          else
+            echo "Failed to extract deployment URL"
+            exit 1
+          fi
