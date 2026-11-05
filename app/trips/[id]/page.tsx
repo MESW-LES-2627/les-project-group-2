@@ -6,9 +6,17 @@ import {createClient} from '@/utils/supabase/server'
 
 import {updateTrip} from '../actions/update-trip'
 import {deleteTrip} from '../actions/delete-trip'
+import {leaveTrip, removeTripMember} from '../actions/manage-trip-members'
 
 type TripWorkspacePageProps = {
     params: Promise<{ id: string }>
+}
+
+type TripMember = {
+    user_id: string
+    email: string | null
+    display_name: string
+    role: 'organizer' | 'member'
 }
 
 const sections = [
@@ -108,6 +116,27 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
         )
     }
 
+    const {data: members, error: membersError} = await supabase.rpc(
+        'get_trip_members',
+        {p_trip_id: id}
+    )
+
+    if (membersError) {
+        console.error('Error fetching trip members:', membersError)
+
+        return (
+            <main className="min-h-screen bg-gray-50 px-6 py-12">
+                <div className="mx-auto max-w-5xl">
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        Could not load trip members
+                    </h1>
+                    <p className="mt-2 text-gray-500">{membersError.message}</p>
+                </div>
+            </main>
+        )
+    }
+
+    const tripMembers = (members ?? []) as TripMember[]
     const isOrganizer = trip.organizer_id === user.id
 
     return (
@@ -241,6 +270,78 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                         </div>
                     )}
                 </header>
+
+                <section className="mt-8 rounded-3xl bg-white p-7 shadow-sm sm:p-8">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900">
+                                Trip members
+                            </h2>
+                            <p className="mt-1 text-sm text-gray-500">
+                                {tripMembers.length} {tripMembers.length === 1 ? 'member' : 'members'}
+                            </p>
+                        </div>
+                        {!isOrganizer && (
+                            <form action={leaveTrip}>
+                                <input type="hidden" name="tripId" value={id}/>
+                                <button
+                                    type="submit"
+                                    className="rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-red-200 hover:text-red-700"
+                                >
+                                    Leave trip
+                                </button>
+                            </form>
+                        )}
+                    </div>
+
+                    <ul className="mt-5 divide-y divide-gray-100">
+                        {tripMembers.map((member) => (
+                            <li
+                                key={member.user_id}
+                                className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                                <div>
+                                    <p className="font-medium text-gray-900">
+                                        {member.display_name}
+                                        {member.user_id === user.id ? ' (You)' : ''}
+                                    </p>
+                                    {member.email && (
+                                        <p className="mt-1 text-sm text-gray-500">
+                                            {member.email}
+                                        </p>
+                                    )}
+                                    <span className="mt-2 inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium capitalize text-gray-600">
+                                        {member.role}
+                                    </span>
+                                </div>
+                                {isOrganizer && member.role === 'member' && (
+                                    <form action={removeTripMember}>
+                                        <input type="hidden" name="tripId" value={id}/>
+                                        <input
+                                            type="hidden"
+                                            name="memberId"
+                                            value={member.user_id}
+                                        />
+                                        <button
+                                            type="submit"
+                                            className="text-sm font-semibold text-red-700 transition hover:text-red-900"
+                                        >
+                                            Remove member
+                                        </button>
+                                    </form>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+
+                    {isOrganizer && (
+                        <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+                            As the organizer, you can’t leave while you’re the only
+                            organizer. Transfer the organizer role or delete the trip
+                            first.
+                        </p>
+                    )}
+                </section>
 
                 {/* Workspace sections */}
                 <section className="mt-10">
