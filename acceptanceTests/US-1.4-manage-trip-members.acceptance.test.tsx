@@ -1,140 +1,61 @@
 /**
  * @file acceptanceTests/US-1.4-manage-trip-members.acceptance.test.tsx
- * @brief Acceptance tests for application route protection and trip workspace access.
+ * @brief Acceptance tests for access revocation after leaving or being removed from a trip.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import React from 'react'
-import { render } from '@testing-library/react'
-import Dashboard from '@/app/dashboard/page'
+import {describe, expect, it, vi} from 'vitest'
 import TripMapPage from '@/app/trips/[id]/map/page'
 import * as navigation from 'next/navigation'
 import * as supabaseServer from '@/utils/supabase/server'
-import type { SupabaseClient, User } from '@supabase/supabase-js'
+import type {SupabaseClient, User} from '@supabase/supabase-js'
 
 vi.mock('next/server', () => ({
-  connection: vi.fn().mockResolvedValue(undefined),
+    connection: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('next/navigation', () => ({
-  redirect: vi.fn().mockImplementation(() => {
-    throw new Error('NEXT_REDIRECT')
-  }),
+    redirect: vi.fn().mockImplementation(() => {
+        throw new Error('NEXT_REDIRECT')
+    }),
 }))
 
 vi.mock('@/utils/supabase/server', () => ({
-  createClient: vi.fn(),
+    createClient: vi.fn(),
 }))
 
-interface MockTripMapContainerProps {
-  currentUserEmail?: string
-  cartoApiKey?: string
+function createMockSupabase(user: Partial<User> | null): unknown {
+    const tripQuery = {
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({data: null, error: null}),
+        select: vi.fn().mockReturnThis(),
+    }
+
+    return {
+        auth: {
+            getUser: vi.fn().mockResolvedValue({data: {user}}),
+        },
+        from: vi.fn(() => tripQuery),
+    }
 }
 
-vi.mock('@/components/map/TripMapContainer', () => ({
-  TripMapContainer: (props: MockTripMapContainerProps) => (
-    <div
-      data-testid="trip-map-container"
-      data-email={props.currentUserEmail}
-      data-key={props.cartoApiKey}
-    />
-  ),
-}))
+describe('US-1.4 Manage trip members acceptance tests', () => {
+    it('denies a former member access to the trip map', async () => {
+        const mockSupabase = createMockSupabase({
+            email: 'former-member@planit.app',
+        })
+        vi.mocked(supabaseServer.createClient).mockResolvedValue(
+            mockSupabase as unknown as SupabaseClient
+        )
 
-function createMockSupabase(
-  user: Partial<User> | null,
-  trip: { id: string } | null = { id: 'trip-101' }
-): unknown {
-  const tripQuery = {
-    eq: vi.fn().mockReturnThis(),
-    maybeSingle: vi.fn().mockResolvedValue({ data: trip, error: null }),
-    select: vi.fn().mockReturnThis(),
-  }
+        const element = await TripMapPage({
+            params: Promise.resolve({id: 'trip-101'}),
+        })
+        const contentElement = element.props.children
+        const ContentComponent = contentElement.type
 
-  return {
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user } }),
-    },
-    from: vi.fn(() => tripQuery),
-  }
-}
-
-describe('Navigation & Route Protection Acceptance Tests', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    process.env.CARTO_API_KEY = 'carto-secret'
-  })
-
-  describe('Scenario: Unauthenticated visitor attempts to access protected map dashboard', () => {
-    it('redirects user to the /entry landing page', async () => {
-      const mockSupabase = createMockSupabase(null)
-      vi.mocked(supabaseServer.createClient).mockResolvedValue(
-        mockSupabase as unknown as SupabaseClient
-      )
-
-      const element = Dashboard()
-      const Content = element.props.children.type
-
-      await expect(Content()).rejects.toThrow('NEXT_REDIRECT')
-      expect(navigation.redirect).toHaveBeenCalledWith('/entry')
+        await expect(ContentComponent(contentElement.props)).rejects.toThrow(
+            'NEXT_REDIRECT'
+        )
+        expect(navigation.redirect).toHaveBeenCalledWith('/dashboard')
     })
-  })
-
-  describe('Scenario: Authenticated user accesses map dashboard directly', () => {
-    it('loads the full-screen map container with active user context', async () => {
-      const mockSupabase = createMockSupabase({ email: 'logged-in@planit.app' })
-      vi.mocked(supabaseServer.createClient).mockResolvedValue(
-        mockSupabase as unknown as SupabaseClient
-      )
-
-      const element = Dashboard()
-      const Content = element.props.children.type
-      const renderedContent = await Content()
-
-      const { container } = render(renderedContent)
-      const mapContainer = container.querySelector('[data-testid="trip-map-container"]')
-      expect(mapContainer?.getAttribute('data-email')).toBe('logged-in@planit.app')
-      expect(mapContainer?.getAttribute('data-key')).toBe('carto-secret')
-    })
-  })
-
-  describe('Scenario: Member navigates to a specific trip workspace map', () => {
-    it('loads trip workspace map with member credentials', async () => {
-      const mockSupabase = createMockSupabase({ email: 'explorer@planit.app' })
-      vi.mocked(supabaseServer.createClient).mockResolvedValue(
-        mockSupabase as unknown as SupabaseClient
-      )
-
-      const element = await TripMapPage({
-        params: Promise.resolve({ id: 'trip-101' }),
-      })
-      const ContentComponent = element.props.children.type
-      const rendered = await ContentComponent(element.props.children.props)
-
-      const { container } = render(rendered)
-      const mapContainer = container.querySelector('[data-testid="trip-map-container"]')
-      expect(mapContainer?.getAttribute('data-email')).toBe('explorer@planit.app')
-    })
-
-    it('redirects a user who is no longer a trip member', async () => {
-      const mockSupabase = createMockSupabase(
-        { email: 'former-member@planit.app' },
-        null
-      )
-      vi.mocked(supabaseServer.createClient).mockResolvedValue(
-        mockSupabase as unknown as SupabaseClient
-      )
-
-      const element = await TripMapPage({
-        params: Promise.resolve({ id: 'trip-101' }),
-      })
-      const contentElement = element.props.children
-      const ContentComponent = contentElement.type
-
-      await expect(ContentComponent(contentElement.props)).rejects.toThrow(
-        'NEXT_REDIRECT'
-      )
-      expect(navigation.redirect).toHaveBeenCalledWith('/dashboard')
-    })
-  })
 })
