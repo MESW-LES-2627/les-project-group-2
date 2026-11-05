@@ -2,6 +2,8 @@ import 'server-only'
 
 import {createClient} from '@/utils/supabase/server'
 import {redirect} from 'next/navigation'
+export { getUserMemberTrips } from './get-member-trips'
+export type { UserMemberTrip, TripDateItem } from './get-member-trips'
 
 export async function getTrips() {
     const supabase = await createClient()

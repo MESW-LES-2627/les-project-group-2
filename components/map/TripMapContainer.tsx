@@ -7,11 +7,12 @@
 
 import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { LogOut, MapPin } from 'lucide-react'
+import { Compass, LogOut, MapPin } from 'lucide-react'
 import { PlaceSearchResult } from '@/types/map'
 import { logout } from '@/app/entry/actions/auth'
 import { SearchBar } from './SearchBar'
-import Link from "next/link";
+import { TripsCard } from './TripsCard'
+import type { UserMemberTrip } from '@/app/trips/actions/get-member-trips'
 
 // Dynamic import of LeafletMap with SSR disabled to prevent `window is not defined`
 const DynamicLeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -34,6 +35,7 @@ interface SimplePin {
 interface TripMapContainerProps {
   currentUserEmail?: string
   cartoApiKey?: string
+  initialTrips?: UserMemberTrip[]
 }
 
 /**
@@ -43,9 +45,11 @@ interface TripMapContainerProps {
 export function TripMapContainer({
   currentUserEmail,
   cartoApiKey,
+  initialTrips,
 }: TripMapContainerProps) {
   const [pins, setPins] = useState<SimplePin[]>([])
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number; zoom?: number } | null>(null)
+  const [isTripsCardOpen, setIsTripsCardOpen] = useState(false)
 
   /**
    * @brief Handles selecting a place from the search bar, flying to it and adding a marker.
@@ -88,14 +92,22 @@ export function TripMapContainer({
             <span className="hidden sm:inline">PlanIt</span>
           </div>
 
-          {/* Left: App new trip */}
-          <Link
-              href="/trips/new"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10  text-white text-xs font-semibold shadow-lg transition-colors"
+          {/* Button to open member trips card */}
+          <button
+            type="button"
+            data-testid="toggle-trips-card-button"
+            onClick={() => setIsTripsCardOpen((prev) => !prev)}
+            aria-expanded={isTripsCardOpen}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-white text-xs font-semibold shadow-lg backdrop-blur-md transition-colors ${
+              isTripsCardOpen
+                ? 'bg-slate-800 border-white/30 text-sky-300'
+                : 'bg-slate-900/85 hover:bg-slate-800 border-white/10'
+            }`}
+            title="My Trips"
           >
-            <span className="text-base leading-none">+</span>
-            <span>New Trip</span>
-          </Link>
+            <Compass className="h-3.5 w-3.5 text-blue-400" />
+            <span>Trips</span>
+          </button>
         </div>
 
         {/* Center: Simple Search Bar */}
@@ -125,6 +137,13 @@ export function TripMapContainer({
           </form>
         </div>
       </header>
+
+      {/* Floating Member Trips Card */}
+      <TripsCard
+        isOpen={isTripsCardOpen}
+        onClose={() => setIsTripsCardOpen(false)}
+        initialTrips={initialTrips}
+      />
 
       {/* Full-screen Leaflet Map */}
       <DynamicLeafletMap
