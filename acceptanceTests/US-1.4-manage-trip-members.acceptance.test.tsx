@@ -1,5 +1,5 @@
 /**
- * @file acceptanceTests/navigation.acceptance.test.tsx
+ * @file acceptanceTests/US-1.4-manage-trip-members.acceptance.test.tsx
  * @brief Acceptance tests for application route protection and trip workspace access.
  */
 
@@ -41,11 +41,21 @@ vi.mock('@/components/map/TripMapContainer', () => ({
   ),
 }))
 
-function createMockSupabase(user: Partial<User> | null): unknown {
+function createMockSupabase(
+  user: Partial<User> | null,
+  trip: { id: string } | null = { id: 'trip-101' }
+): unknown {
+  const tripQuery = {
+    eq: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockResolvedValue({ data: trip, error: null }),
+    select: vi.fn().mockReturnThis(),
+  }
+
   return {
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user } }),
     },
+    from: vi.fn(() => tripQuery),
   }
 }
 
@@ -104,6 +114,27 @@ describe('Navigation & Route Protection Acceptance Tests', () => {
       const { container } = render(rendered)
       const mapContainer = container.querySelector('[data-testid="trip-map-container"]')
       expect(mapContainer?.getAttribute('data-email')).toBe('explorer@planit.app')
+    })
+
+    it('redirects a user who is no longer a trip member', async () => {
+      const mockSupabase = createMockSupabase(
+        { email: 'former-member@planit.app' },
+        null
+      )
+      vi.mocked(supabaseServer.createClient).mockResolvedValue(
+        mockSupabase as unknown as SupabaseClient
+      )
+
+      const element = await TripMapPage({
+        params: Promise.resolve({ id: 'trip-101' }),
+      })
+      const contentElement = element.props.children
+      const ContentComponent = contentElement.type
+
+      await expect(ContentComponent(contentElement.props)).rejects.toThrow(
+        'NEXT_REDIRECT'
+      )
+      expect(navigation.redirect).toHaveBeenCalledWith('/dashboard')
     })
   })
 })
