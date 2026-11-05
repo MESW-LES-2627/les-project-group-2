@@ -123,6 +123,15 @@ describe('joinTripByCode Server Action', () => {
     expect(navigation.redirect).toHaveBeenCalledWith('/trips/trip-100')
   })
 
+  it('handles revalidatePath failure gracefully during render passes and still redirects', async () => {
+    vi.mocked(cache.revalidatePath).mockImplementationOnce(() => {
+      throw new Error("can't be called during render")
+    })
+
+    await expect(joinTripByCode('TRIP1234')).rejects.toThrow('NEXT_REDIRECT:/trips/trip-100')
+    expect(navigation.redirect).toHaveBeenCalledWith('/trips/trip-100')
+  })
+
   it('assigns role organizer if the joining user is the trip organizer', async () => {
     mockGetUser.mockResolvedValueOnce({
       data: { user: { id: 'user-organizer' } },

@@ -68,7 +68,11 @@ export async function joinTripByCode(code: string): Promise<JoinTripResult> {
     }
   }
 
-  revalidatePath(`/trips/${trip.id}`)
+  try {
+    revalidatePath(`/trips/${trip.id}`)
+  } catch {
+    // revalidatePath cannot be called during a page render pass
+  }
   redirect(`/trips/${trip.id}`)
 }
 
