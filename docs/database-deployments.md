@@ -17,6 +17,8 @@ With explicit approval to discard production application data, the public applic
 
 The deployment rerun succeeded, and the production schema matched the migration-built local baseline. Unauthenticated production page/redirect checks, 14 JavaScript/CSS assets, and place search passed. Authenticated hosted UI flows still require a test login; local authenticated smoke tests are not a substitute for that check.
 
+The reset also exposed an unversioned dependency: the profile UI calls `delete_own_account`. Migration `20261106140000_add_account_deletion_rpc.sql` now defines that caller-only RPC, with database tests for anonymous rejection and isolation between users. Its SQL was restored in production as part of recovery; its migration-history entry will be recorded by normal deployment when this PR is promoted. A rolled-back production test verified that it deletes only the caller's test account.
+
 To check a hosted database against a clean local snapshot (Supabase CLI 3.0.0):
 
 ```bash
