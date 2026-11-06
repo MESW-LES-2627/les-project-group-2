@@ -253,7 +253,7 @@ describe('Auth Actions', () => {
 
       const result = await signup(null, formData)
       expect(result).toEqual({
-        error: 'Verify your email. In case you are already registered, please consider logging in.',
+        error: 'Verify your email. If you are already registered, please consider logging in.',
       })
       expect(navigation.redirect).not.toHaveBeenCalled()
     })
