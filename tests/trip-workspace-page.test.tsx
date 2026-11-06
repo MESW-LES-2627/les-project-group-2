@@ -36,6 +36,10 @@ vi.mock('@/app/trips/actions/date-windows', () => ({
     deleteDateWindow: vi.fn(),
 }))
 
+vi.mock('@/app/trips/actions/availability', () => ({
+    saveAvailability: vi.fn(),
+}))
+
 type TripWorkspacePageProps = {
     params: Promise<{id: string}>
 }
@@ -45,6 +49,7 @@ type Query = {
     eq: ReturnType<typeof vi.fn>
     maybeSingle: ReturnType<typeof vi.fn>
     order: ReturnType<typeof vi.fn>
+    range: ReturnType<typeof vi.fn>
 }
 
 const trip = {
@@ -57,6 +62,7 @@ const trip = {
 
 describe('Trip workspace page', () => {
     let query: Query
+    let availabilityQuery: Query
     let getUser: ReturnType<typeof vi.fn>
     let getTripMembers: ReturnType<typeof vi.fn>
 
@@ -68,6 +74,7 @@ describe('Trip workspace page', () => {
             eq: vi.fn(),
             maybeSingle: vi.fn(),
             order: vi.fn(),
+            range: vi.fn(),
         }
         query.select.mockReturnValue(query)
         query.eq.mockReturnValue(query)
@@ -80,6 +87,24 @@ describe('Trip workspace page', () => {
                     start_date: '2099-07-01',
                     end_date: '2099-07-10',
                 },
+            ],
+            error: null,
+        })
+
+        availabilityQuery = {
+            select: vi.fn(),
+            eq: vi.fn(),
+            maybeSingle: vi.fn(),
+            order: vi.fn(),
+            range: vi.fn(),
+        }
+        availabilityQuery.select.mockReturnValue(availabilityQuery)
+        availabilityQuery.eq.mockReturnValue(availabilityQuery)
+        availabilityQuery.order.mockReturnValue(availabilityQuery)
+        availabilityQuery.range.mockResolvedValue({
+            data: [
+                {user_id: 'user-1', day: '2099-07-02', status: 'available'},
+                {user_id: 'user-1', day: '2099-07-03', status: 'unavailable'},
             ],
             error: null,
         })
@@ -108,7 +133,9 @@ describe('Trip workspace page', () => {
 
         vi.mocked(supabaseServer.createClient).mockResolvedValue({
             auth: {getUser},
-            from: vi.fn(() => query),
+            from: vi.fn((table: string) =>
+                table === 'trip_availability' ? availabilityQuery : query
+            ),
             rpc: getTripMembers,
         } as never)
         vi.mocked(navigation.redirect).mockImplementation(() => {
@@ -170,7 +197,7 @@ describe('Trip workspace page', () => {
         expect(screen.getByText('You')).toBeTruthy()
         expect(screen.getByText('Edit trip details')).toBeTruthy()
         expect(screen.getByText('Trip members')).toBeTruthy()
-        expect(screen.getByText('Trip Member')).toBeTruthy()
+        expect(screen.getByText('Trip Member', {selector: 'p'})).toBeTruthy()
         expect(screen.getByText('member@example.com')).toBeTruthy()
         expect(screen.getByText('organizer')).toBeTruthy()
         expect(screen.getByRole('button', {name: 'Remove member'})).toBeTruthy()
@@ -207,8 +234,7 @@ describe('Trip workspace page', () => {
         await renderContent()
 
         expect(screen.getByText('Candidate dates')).toBeTruthy()
-        expect(screen.getByText(/1 Jul 2099/)).toBeTruthy()
-        expect(screen.getByText(/10 Jul 2099/)).toBeTruthy()
+        expect(screen.getByText(/1 Jul 2099 → 10 Jul 2099/, {selector: 'p'})).toBeTruthy()
         expect(screen.queryByRole('button', {name: 'Add date window'})).toBeNull()
     })
 
@@ -229,6 +255,95 @@ describe('Trip workspace page', () => {
         expect(screen.getByText('Windows unavailable')).toBeTruthy()
         expect(consoleError).toHaveBeenCalledWith(
             'Error fetching date windows:',
+            databaseError
+        )
+    })
+
+    it('shows the availability calendar with overlaps and who is still missing', async () => {
+        await renderContent()
+
+        expect(screen.getByText('Availability')).toBeTruthy()
+        expect(screen.getAllByText(/\/2 available/)).toHaveLength(10)
+        expect(screen.getByText('1/2 available', {selector: 'span'})).toBeTruthy()
+        expect(screen.getByText('Trip Member', {selector: 'span'})).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Save my availability'})).toBeTruthy()
+    })
+
+    it('hides the availability calendar when there are no date windows', async () => {
+        query.order.mockResolvedValueOnce({data: [], error: null})
+
+        await renderContent()
+
+        expect(screen.queryByText('Availability')).toBeNull()
+    })
+
+    it('includes answers beyond the first 1000 rows in overlaps and the missing list', async () => {
+        const members = Array.from({length: 1001}, (_, index) => ({
+            user_id: `member-${index}`,
+            email: null,
+            display_name: `Member ${index}`,
+            role: 'member',
+        }))
+        getTripMembers.mockResolvedValueOnce({data: members, error: null})
+        const rows = members.map((member) => ({
+            user_id: member.user_id,
+            day: '2099-07-01',
+            status: 'available',
+        }))
+        availabilityQuery.range
+            .mockResolvedValueOnce({data: rows.slice(0, 1000), error: null})
+            .mockResolvedValueOnce({data: rows.slice(1000), error: null})
+
+        await renderContent()
+
+        expect(availabilityQuery.range.mock.calls).toEqual([[0, 999], [1000, 1999]])
+        expect(availabilityQuery.order).toHaveBeenCalledWith('user_id', {ascending: true})
+        expect(screen.getByText('1001/1001 available')).toBeTruthy()
+        expect(screen.queryByText(/still waiting for/i)).toBeNull()
+    })
+
+    it('requests an empty final page when the answer count is exactly a full page', async () => {
+        availabilityQuery.range
+            .mockResolvedValueOnce({
+                data: Array.from({length: 1000}, () => ({
+                    user_id: 'user-1', day: '2099-07-01', status: 'available',
+                })),
+                error: null,
+            })
+            .mockResolvedValueOnce({data: [], error: null})
+
+        await renderContent()
+
+        expect(availabilityQuery.range.mock.calls).toEqual([[0, 999], [1000, 1999]])
+    })
+
+    it('reports a later-page failure instead of displaying partial overlaps', async () => {
+        availabilityQuery.range
+            .mockResolvedValueOnce({
+                data: Array.from({length: 1000}, () => ({
+                    user_id: 'user-1', day: '2099-07-01', status: 'available',
+                })),
+                error: null,
+            })
+            .mockResolvedValueOnce({data: null, error: {message: 'Second page failed'}})
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await renderContent()
+
+        expect(screen.getByText('Could not load availability')).toBeTruthy()
+        expect(screen.queryByText('Availability')).toBeNull()
+    })
+
+    it('renders an error message when the availability query fails', async () => {
+        const databaseError = {message: 'Availability unavailable'}
+        availabilityQuery.range.mockResolvedValueOnce({data: null, error: databaseError})
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await renderContent()
+
+        expect(screen.getByText('Could not load availability')).toBeTruthy()
+        expect(consoleError).toHaveBeenCalledWith(
+            'Error fetching availability:',
             databaseError
         )
     })
