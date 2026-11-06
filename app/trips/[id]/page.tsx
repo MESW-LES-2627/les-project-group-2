@@ -8,6 +8,8 @@ import {updateTrip} from '../actions/update-trip'
 import {deleteTrip} from '../actions/delete-trip'
 import {leaveTrip, removeTripMember} from '../actions/manage-trip-members'
 import {InviteSettings} from './invite-settings'
+import {DateWindows} from './date-windows'
+import type {DateWindow} from '@/utils/date-windows'
 
 type TripWorkspacePageProps = {
     params: Promise<{ id: string }>
@@ -21,12 +23,6 @@ type TripMember = {
 }
 
 const sections = [
-    {
-        title: 'Dates',
-        description: 'Choose your travel dates and manage your schedule.',
-        icon: '📅',
-        status: 'Coming soon',
-    },
     {
         title: 'Itinerary',
         description: 'Build your plans and organize activities.',
@@ -132,6 +128,27 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                         Could not load trip members
                     </h1>
                     <p className="mt-2 text-gray-500">{membersError.message}</p>
+                </div>
+            </main>
+        )
+    }
+
+    const {data: dateWindows, error: dateWindowsError} = await supabase
+        .from('trip_date_windows')
+        .select('id, trip_id, start_date, end_date')
+        .eq('trip_id', id)
+        .order('start_date', {ascending: true})
+
+    if (dateWindowsError) {
+        console.error('Error fetching date windows:', dateWindowsError)
+
+        return (
+            <main className="min-h-screen bg-gray-50 px-6 py-12">
+                <div className="mx-auto max-w-5xl">
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        Could not load candidate dates
+                    </h1>
+                    <p className="mt-2 text-gray-500">{dateWindowsError.message}</p>
                 </div>
             </main>
         )
@@ -346,6 +363,12 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                         </p>
                     )}
                 </section>
+
+                <DateWindows
+                    tripId={id}
+                    windows={(dateWindows ?? []) as DateWindow[]}
+                    isOrganizer={isOrganizer}
+                />
 
                 {/* Workspace sections */}
                 <section className="mt-10">
