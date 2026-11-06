@@ -21,7 +21,7 @@ interface DateWindowsProps {
 }
 
 const inputClass =
-  'w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100'
+  'w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 [color-scheme:light] outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100'
 
 /**
  * @brief Formats a YYYY-MM-DD date for display.
