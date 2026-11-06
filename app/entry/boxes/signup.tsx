@@ -38,56 +38,6 @@ export function SignUpBox({
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-slate-300">
-            Profile Picture (Optional)
-          </label>
-          <div className="flex items-center gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              name="profile_pic"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) {
-                  setPreviewUrl(URL.createObjectURL(file))
-                } else {
-                  setPreviewUrl(null)
-                }
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 rounded-xl bg-slate-700/60 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700 hover:text-white"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Upload picture
-            </button>
-            {previewUrl && (
-              <div className="relative flex items-center">
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="h-10 w-10 rounded-full border border-slate-600 object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPreviewUrl(null)
-                    if (fileInputRef.current) fileInputRef.current.value = ''
-                  }}
-                  className="absolute -right-1 -top-1 rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
         <div className="relative">
           <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
