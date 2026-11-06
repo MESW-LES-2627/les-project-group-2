@@ -86,6 +86,64 @@ describe('AvailabilityCalendar', () => {
     expect((await screen.findByRole('status')).textContent).toBe('Your availability was saved.')
   })
 
+  it('does not restore or resubmit an answer after its day is pruned and reintroduced', async () => {
+    const props = { tripId: 'trip-1', missing: [], memberCount: 3 }
+    const view = render(
+      <AvailabilityCalendar {...props} days={days} myAnswers={{ '2099-07-01': 'available' }} />
+    )
+
+    view.rerender(<AvailabilityCalendar {...props} days={[days[1]]} myAnswers={{}} />)
+    view.rerender(<AvailabilityCalendar {...props} days={days} myAnswers={{}} />)
+
+    expect((screen.getAllByRole('combobox')[0] as HTMLSelectElement).value).toBe('none')
+    fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: 'unavailable' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save my availability' }))
+
+    await waitFor(() => expect(actions.saveAvailability).toHaveBeenCalledWith('trip-1', [
+      { day: '2099-07-02', choice: 'unavailable' },
+    ]))
+  })
+
+  it('updates untouched answers from the server while preserving unsaved edits', () => {
+    const props = { tripId: 'trip-1', missing: [], memberCount: 3, days }
+    const view = render(<AvailabilityCalendar {...props} myAnswers={{}} />)
+
+    fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: 'unavailable' } })
+    view.rerender(
+      <AvailabilityCalendar {...props} myAnswers={{ '2099-07-01': 'available' }} />
+    )
+
+    expect((screen.getAllByRole('combobox')[0] as HTMLSelectElement).value).toBe('available')
+    expect((screen.getAllByRole('combobox')[1] as HTMLSelectElement).value).toBe('unavailable')
+  })
+
+  it('discards unsaved edits for removed days but keeps edits for remaining days', () => {
+    const props = { tripId: 'trip-1', missing: [], memberCount: 3, myAnswers: {} }
+    const view = render(<AvailabilityCalendar {...props} days={days} />)
+
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'available' } })
+    fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: 'unavailable' } })
+    view.rerender(<AvailabilityCalendar {...props} days={[days[1]]} />)
+    view.rerender(<AvailabilityCalendar {...props} days={days} />)
+
+    expect((screen.getAllByRole('combobox')[0] as HTMLSelectElement).value).toBe('none')
+    expect((screen.getAllByRole('combobox')[1] as HTMLSelectElement).value).toBe('unavailable')
+  })
+
+  it('does not resubmit an edit after refreshed props confirm it was saved', async () => {
+    const props = { tripId: 'trip-1', missing: [], memberCount: 3, days }
+    const view = render(<AvailabilityCalendar {...props} myAnswers={{}} />)
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'available' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save my availability' }))
+    await screen.findByText('Your availability was saved.')
+
+    view.rerender(<AvailabilityCalendar {...props} myAnswers={{ '2099-07-01': 'available' }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Save my availability' }))
+
+    expect(actions.saveAvailability).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('status').textContent).toBe('No changes to save.')
+  })
+
   it('sends "none" when an answer is cleared', async () => {
     renderCalendar({ myAnswers: { '2099-07-01': 'available' } })
 

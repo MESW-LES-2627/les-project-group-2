@@ -49,9 +49,25 @@ export function AvailabilityCalendar({
   memberCount,
   myAnswers,
 }: AvailabilityCalendarProps) {
-  const [draft, setDraft] = useState<Record<string, AvailabilityChoice>>(myAnswers)
+  const [draftState, setDraftState] = useState({
+    days,
+    myAnswers,
+    answers: myAnswers as Record<string, AvailabilityChoice>,
+  })
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
   const [isPending, startTransition] = useTransition()
+  let draft = draftState.answers
+
+  // Reconcile refreshed data without discarding edits to days that still exist.
+  if (draftState.days !== days || draftState.myAnswers !== myAnswers) {
+    const previousDays = new Set(draftState.days.map(({ day }) => day))
+    draft = Object.fromEntries(days.map(({ day }) => {
+      const choice = draftState.answers[day] ?? 'none'
+      const wasEdited = previousDays.has(day) && choice !== (draftState.myAnswers[day] ?? 'none')
+      return [day, wasEdited ? choice : (myAnswers[day] ?? 'none')]
+    }))
+    setDraftState({ days, myAnswers, answers: draft })
+  }
 
   /**
    * @brief Sends only the days whose answer differs from the saved one.
@@ -124,7 +140,11 @@ export function AvailabilityCalendar({
               id={`answer-${day}`}
               value={draft[day] ?? 'none'}
               onChange={(event) =>
-                setDraft({ ...draft, [day]: event.target.value as AvailabilityChoice })
+                setDraftState({
+                  days,
+                  myAnswers,
+                  answers: { ...draft, [day]: event.target.value as AvailabilityChoice },
+                })
               }
               className="mt-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             >

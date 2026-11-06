@@ -156,11 +156,28 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
         )
     }
 
-    const {data: availability, error: availabilityError} = await supabase
-        .from('trip_availability')
-        .select('user_id, day, status')
-        .eq('trip_id', id)
-        .order('day', {ascending: true})
+    const availabilityRows: AvailabilityRow[] = []
+    const pageSize = 1000
+    let availabilityError: {message: string} | null = null
+
+    // Supabase caps each response; fetch every page before computing overlaps.
+    for (let from = 0; ; from += pageSize) {
+        const {data, error} = await supabase
+            .from('trip_availability')
+            .select('user_id, day, status')
+            .eq('trip_id', id)
+            .order('day', {ascending: true})
+            .order('user_id', {ascending: true})
+            .range(from, from + pageSize - 1)
+
+        if (error) {
+            availabilityError = error
+            break
+        }
+
+        availabilityRows.push(...(data ?? []))
+        if ((data?.length ?? 0) < pageSize) break
+    }
 
     if (availabilityError) {
         console.error('Error fetching availability:', availabilityError)
@@ -179,7 +196,6 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
 
     const tripMembers = (members ?? []) as TripMember[]
     const isOrganizer = trip.organizer_id === user.id
-    const availabilityRows = (availability ?? []) as AvailabilityRow[]
     const calendar = buildAvailabilityCalendar(
         (dateWindows ?? []) as DateWindow[],
         availabilityRows,

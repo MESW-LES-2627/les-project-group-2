@@ -110,7 +110,8 @@ describe('US-1.3 Acceptance Tests: Group Onboarding via Link/Code', () => {
           const windowsQuery = {
             select: vi.fn(() => windowsQuery),
             eq: vi.fn(() => windowsQuery),
-            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            order: vi.fn(() => table === 'trip_availability' ? windowsQuery : Promise.resolve({ data: [], error: null })),
+            range: vi.fn().mockResolvedValue({ data: [], error: null }),
           }
           return windowsQuery
         }

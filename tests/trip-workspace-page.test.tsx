@@ -49,6 +49,7 @@ type Query = {
     eq: ReturnType<typeof vi.fn>
     maybeSingle: ReturnType<typeof vi.fn>
     order: ReturnType<typeof vi.fn>
+    range: ReturnType<typeof vi.fn>
 }
 
 const trip = {
@@ -73,6 +74,7 @@ describe('Trip workspace page', () => {
             eq: vi.fn(),
             maybeSingle: vi.fn(),
             order: vi.fn(),
+            range: vi.fn(),
         }
         query.select.mockReturnValue(query)
         query.eq.mockReturnValue(query)
@@ -94,10 +96,12 @@ describe('Trip workspace page', () => {
             eq: vi.fn(),
             maybeSingle: vi.fn(),
             order: vi.fn(),
+            range: vi.fn(),
         }
         availabilityQuery.select.mockReturnValue(availabilityQuery)
         availabilityQuery.eq.mockReturnValue(availabilityQuery)
-        availabilityQuery.order.mockResolvedValue({
+        availabilityQuery.order.mockReturnValue(availabilityQuery)
+        availabilityQuery.range.mockResolvedValue({
             data: [
                 {user_id: 'user-1', day: '2099-07-02', status: 'available'},
                 {user_id: 'user-1', day: '2099-07-03', status: 'unavailable'},
@@ -273,9 +277,66 @@ describe('Trip workspace page', () => {
         expect(screen.queryByText('Availability')).toBeNull()
     })
 
+    it('includes answers beyond the first 1000 rows in overlaps and the missing list', async () => {
+        const members = Array.from({length: 1001}, (_, index) => ({
+            user_id: `member-${index}`,
+            email: null,
+            display_name: `Member ${index}`,
+            role: 'member',
+        }))
+        getTripMembers.mockResolvedValueOnce({data: members, error: null})
+        const rows = members.map((member) => ({
+            user_id: member.user_id,
+            day: '2099-07-01',
+            status: 'available',
+        }))
+        availabilityQuery.range
+            .mockResolvedValueOnce({data: rows.slice(0, 1000), error: null})
+            .mockResolvedValueOnce({data: rows.slice(1000), error: null})
+
+        await renderContent()
+
+        expect(availabilityQuery.range.mock.calls).toEqual([[0, 999], [1000, 1999]])
+        expect(availabilityQuery.order).toHaveBeenCalledWith('user_id', {ascending: true})
+        expect(screen.getByText('1001/1001 available')).toBeTruthy()
+        expect(screen.queryByText(/still waiting for/i)).toBeNull()
+    })
+
+    it('requests an empty final page when the answer count is exactly a full page', async () => {
+        availabilityQuery.range
+            .mockResolvedValueOnce({
+                data: Array.from({length: 1000}, () => ({
+                    user_id: 'user-1', day: '2099-07-01', status: 'available',
+                })),
+                error: null,
+            })
+            .mockResolvedValueOnce({data: [], error: null})
+
+        await renderContent()
+
+        expect(availabilityQuery.range.mock.calls).toEqual([[0, 999], [1000, 1999]])
+    })
+
+    it('reports a later-page failure instead of displaying partial overlaps', async () => {
+        availabilityQuery.range
+            .mockResolvedValueOnce({
+                data: Array.from({length: 1000}, () => ({
+                    user_id: 'user-1', day: '2099-07-01', status: 'available',
+                })),
+                error: null,
+            })
+            .mockResolvedValueOnce({data: null, error: {message: 'Second page failed'}})
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await renderContent()
+
+        expect(screen.getByText('Could not load availability')).toBeTruthy()
+        expect(screen.queryByText('Availability')).toBeNull()
+    })
+
     it('renders an error message when the availability query fails', async () => {
         const databaseError = {message: 'Availability unavailable'}
-        availabilityQuery.order.mockResolvedValueOnce({data: null, error: databaseError})
+        availabilityQuery.range.mockResolvedValueOnce({data: null, error: databaseError})
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
         await renderContent()
