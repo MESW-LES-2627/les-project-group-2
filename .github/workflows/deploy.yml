@@ -31,6 +31,29 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 3.0.0
+
+      - name: Validate migrations against a clean disposable database
+        run: |
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+          supabase db reset --no-seed
+          supabase test db
+          supabase db query --read-only --file scripts/database-schema.sql > "$RUNNER_TEMP/database-schema.json"
+
+      - name: Save the clean schema baseline
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-schema
+          path: ${{ runner.temp }}/database-schema.json
+          if-no-files-found: error
+
+      - name: Stop the disposable database
+        if: always()
+        run: supabase stop --no-backup
+
 
   migrate:
     name: Database Migrations
@@ -43,19 +66,29 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v3
         with:
-          version: latest
+          version: 3.0.0
+
+      - name: Download the clean schema baseline
+        uses: actions/download-artifact@v4
+        with:
+          name: database-schema
+          path: ${{ runner.temp }}
 
       # Staging migrations (staging branch)
       - name: Run Migrations (Staging)
         if: github.ref == 'refs/heads/staging'
         run: |
           if [ -n "${{ secrets.SUPABASE_DB_URL_STAGING }}" ]; then
-            supabase db push --yes --include-all --db-url "${{ secrets.SUPABASE_DB_URL_STAGING }}"
+            DB_TARGET="${{ secrets.SUPABASE_DB_URL_STAGING }}"
+            supabase db push --yes --include-all --remote="$DB_TARGET"
           elif [ -n "${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}" ]; then
-            supabase db push --yes --include-all --remote="${{ secrets.SUPABASE_STAGING_PROJECT_ID }}" --password="${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}"
+            DB_TARGET="${{ secrets.SUPABASE_STAGING_PROJECT_ID }}"
+            supabase db push --yes --include-all --remote="$DB_TARGET" --password="${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}"
           else
-            supabase db push --yes --include-all --remote="${{ secrets.SUPABASE_STAGING_PROJECT_ID }}"
+            DB_TARGET="${{ secrets.SUPABASE_STAGING_PROJECT_ID }}"
+            supabase db push --yes --include-all --remote="$DB_TARGET"
           fi
+          node scripts/check-database-schema.mjs --expected "$RUNNER_TEMP/database-schema.json" --remote "$DB_TARGET"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
@@ -64,12 +97,16 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           if [ -n "${{ secrets.SUPABASE_DB_URL_PRODUCTION }}" ]; then
-            supabase db push --yes --include-all --db-url "${{ secrets.SUPABASE_DB_URL_PRODUCTION }}"
+            DB_TARGET="${{ secrets.SUPABASE_DB_URL_PRODUCTION }}"
+            supabase db push --yes --include-all --remote="$DB_TARGET"
           elif [ -n "${{ secrets.SUPABASE_PROD_DB_PASSWORD }}" ]; then
-            supabase db push --yes --include-all --remote="${{ secrets.SUPABASE_PROD_PROJECT_ID }}" --password="${{ secrets.SUPABASE_PROD_DB_PASSWORD }}"
+            DB_TARGET="${{ secrets.SUPABASE_PROD_PROJECT_ID }}"
+            supabase db push --yes --include-all --remote="$DB_TARGET" --password="${{ secrets.SUPABASE_PROD_DB_PASSWORD }}"
           else
-            supabase db push --yes --include-all --remote="${{ secrets.SUPABASE_PROD_PROJECT_ID }}"
+            DB_TARGET="${{ secrets.SUPABASE_PROD_PROJECT_ID }}"
+            supabase db push --yes --include-all --remote="$DB_TARGET"
           fi
+          node scripts/check-database-schema.mjs --expected "$RUNNER_TEMP/database-schema.json" --remote "$DB_TARGET"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 

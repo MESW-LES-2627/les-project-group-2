@@ -11,6 +11,27 @@ on:
       - staging
 
 jobs:
+  database:
+    name: Database Migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 3.0.0
+      - name: Build a clean local database from migrations
+        run: |
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+          supabase db reset --no-seed
+      - name: Run database regression tests
+        run: supabase test db
+      - name: Stop the disposable database
+        if: always()
+        run: supabase stop --no-backup
+
   lint-and-format:
     name: Lint and Format
     runs-on: ubuntu-latest
