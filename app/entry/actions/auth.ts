@@ -61,7 +61,7 @@ export async function signup(
   if (error) { return { error: error.message }}
 
   if (!data?.session) {
-    return { error: 'Verify your email. In case you are already registered, please consider logging in.' }
+    return { error: 'Verify your email. If you are already registered, please consider logging in.' }
   }
 
   const userId = data.user?.id || data.session.user?.id

@@ -8,10 +8,12 @@
 
 import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { LogOut, MapPin } from 'lucide-react'
-import { Pin, PlaceSearchResult } from '@/types/map'
+import { Compass, LogOut, MapPin } from 'lucide-react'
 import { logout } from '@/app/entry/actions/auth'
 import { SearchBar } from './SearchBar'
+import { TripsCard } from './TripsCard'
+import type { UserMemberTrip } from '@/app/trips/actions/get-member-trips'
+import { Pin, PlaceSearchResult } from '@/types/map'
 import { PinVoteCard } from './PinVoteCard'
 import { ProfileCard } from '@/components/profile'
 import Link from 'next/link'
@@ -32,6 +34,7 @@ interface TripMapContainerProps {
   currentUsername?: string
   currentUserAvatar?: string | null
   cartoApiKey?: string
+  initialTrips?: UserMemberTrip[]
   initialPins?: Pin[]
 }
 
@@ -44,11 +47,13 @@ export function TripMapContainer({
   currentUsername,
   currentUserAvatar,
   cartoApiKey,
+  initialTrips,
   initialPins = [],
 }: TripMapContainerProps) {
   const [pins, setPins] = useState<Pin[]>(initialPins)
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number; zoom?: number } | null>(null)
+  const [isTripsCardOpen, setIsTripsCardOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [updatedUsername, setUpdatedUsername] = useState<string | null>(null)
   const [updatedAvatarUrl, setUpdatedAvatarUrl] = useState<string | null | undefined>(undefined)
@@ -130,14 +135,22 @@ export function TripMapContainer({
             <span className="hidden sm:inline">PlanIt</span>
           </div>
 
-          {/* Left: App new trip */}
-          <Link
-            href="/trips/new"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10 text-white text-xs font-semibold shadow-lg transition-colors"
+          {/* Button to open member trips card */}
+          <button
+            type="button"
+            data-testid="toggle-trips-card-button"
+            onClick={() => setIsTripsCardOpen((prev) => !prev)}
+            aria-expanded={isTripsCardOpen}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-white text-xs font-semibold shadow-lg backdrop-blur-md transition-colors ${
+              isTripsCardOpen
+                ? 'bg-slate-800 border-white/30 text-sky-300'
+                : 'bg-slate-900/85 hover:bg-slate-800 border-white/10'
+            }`}
+            title="My Trips"
           >
-            <span className="text-base leading-none">+</span>
-            <span>New Trip</span>
-          </Link>
+            <Compass className="h-3.5 w-3.5 text-blue-400" />
+            <span>Trips</span>
+          </button>
         </div>
 
         {/* Center: Simple Search Bar */}
@@ -186,6 +199,12 @@ export function TripMapContainer({
         </div>
       </header>
 
+      {/* Floating Member Trips Card */}
+      <TripsCard
+        isOpen={isTripsCardOpen}
+        onClose={() => setIsTripsCardOpen(false)}
+        initialTrips={initialTrips}
+      />
       {/* Center Profile Modal Component */}
       {isProfileOpen && (
         <div className="absolute inset-0 z-[850] flex items-center justify-center p-4 pointer-events-none">

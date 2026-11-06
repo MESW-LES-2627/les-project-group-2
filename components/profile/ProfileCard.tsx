@@ -96,8 +96,6 @@ export function ProfileCard({
       'Are you sure you want to delete your account?'
     )
     if (!confirmed) return
-  
-    onClose()
 
     setIsDeleting(true)
     setServerError(null)

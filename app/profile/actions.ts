@@ -65,16 +65,11 @@ export async function softDeleteAccount(): Promise<{ error?: string } | void> {
   if (!user) { return { error: 'Not authenticated' }}
 
   const deletion = await removeImage('profile_pics', user.id, supabase)
-  if (typeof deletion === 'object' && deletion.error) {
-    return { error: deletion.error }
-  }
+  if (typeof deletion === 'object' && deletion.error) { return { error: deletion.error }}
 
   const { error: rpcError } = await supabase.rpc('delete_own_account')
-  if (rpcError) {
-    return { error: rpcError.message }
-  }
+  if (rpcError) { return { error: rpcError.message }}
 
-  // 4. Terminar sessão e redirecionar
   await supabase.auth.signOut()
   revalidatePath('/', 'layout')
   redirect('/entry')

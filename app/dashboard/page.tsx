@@ -55,6 +55,7 @@ async function Content() {
   return (
     <main className="w-screen h-screen overflow-hidden">
       <TripMapContainer
+        key={user.id}
         currentUserEmail={user.email}
         currentUsername={currentUsername}
         currentUserAvatar={currentUserAvatar}
