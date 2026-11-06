@@ -9,7 +9,9 @@ import {deleteTrip} from '../actions/delete-trip'
 import {leaveTrip, removeTripMember} from '../actions/manage-trip-members'
 import {InviteSettings} from './invite-settings'
 import {DateWindows} from './date-windows'
+import {AvailabilityCalendar} from './availability-calendar'
 import type {DateWindow} from '@/utils/date-windows'
+import {buildAvailabilityCalendar, type AvailabilityRow} from '@/utils/availability'
 
 type TripWorkspacePageProps = {
     params: Promise<{ id: string }>
@@ -154,8 +156,40 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
         )
     }
 
+    const {data: availability, error: availabilityError} = await supabase
+        .from('trip_availability')
+        .select('user_id, day, status')
+        .eq('trip_id', id)
+        .order('day', {ascending: true})
+
+    if (availabilityError) {
+        console.error('Error fetching availability:', availabilityError)
+
+        return (
+            <main className="min-h-screen bg-gray-50 px-6 py-12">
+                <div className="mx-auto max-w-5xl">
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        Could not load availability
+                    </h1>
+                    <p className="mt-2 text-gray-500">{availabilityError.message}</p>
+                </div>
+            </main>
+        )
+    }
+
     const tripMembers = (members ?? []) as TripMember[]
     const isOrganizer = trip.organizer_id === user.id
+    const availabilityRows = (availability ?? []) as AvailabilityRow[]
+    const calendar = buildAvailabilityCalendar(
+        (dateWindows ?? []) as DateWindow[],
+        availabilityRows,
+        tripMembers
+    )
+    const myAnswers = Object.fromEntries(
+        availabilityRows
+            .filter((row) => row.user_id === user.id)
+            .map((row) => [row.day, row.status])
+    )
 
     return (
         <main className="min-h-screen bg-gray-50">
@@ -369,6 +403,16 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                     windows={(dateWindows ?? []) as DateWindow[]}
                     isOrganizer={isOrganizer}
                 />
+
+                {calendar.days.length > 0 && (
+                    <AvailabilityCalendar
+                        tripId={id}
+                        days={calendar.days}
+                        missing={calendar.missing}
+                        memberCount={tripMembers.length}
+                        myAnswers={myAnswers}
+                    />
+                )}
 
                 {/* Workspace sections */}
                 <section className="mt-10">
