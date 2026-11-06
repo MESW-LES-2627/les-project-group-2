@@ -30,6 +30,12 @@ vi.mock('@/app/trips/actions/manage-trip-members', () => ({
     removeTripMember: vi.fn(),
 }))
 
+vi.mock('@/app/trips/actions/date-windows', () => ({
+    addDateWindow: vi.fn(),
+    updateDateWindow: vi.fn(),
+    deleteDateWindow: vi.fn(),
+}))
+
 type TripWorkspacePageProps = {
     params: Promise<{id: string}>
 }
@@ -38,6 +44,7 @@ type Query = {
     select: ReturnType<typeof vi.fn>
     eq: ReturnType<typeof vi.fn>
     maybeSingle: ReturnType<typeof vi.fn>
+    order: ReturnType<typeof vi.fn>
 }
 
 const trip = {
@@ -60,10 +67,22 @@ describe('Trip workspace page', () => {
             select: vi.fn(),
             eq: vi.fn(),
             maybeSingle: vi.fn(),
+            order: vi.fn(),
         }
         query.select.mockReturnValue(query)
         query.eq.mockReturnValue(query)
         query.maybeSingle.mockResolvedValue({data: trip, error: null})
+        query.order.mockResolvedValue({
+            data: [
+                {
+                    id: 'window-1',
+                    trip_id: 'trip-1',
+                    start_date: '2099-07-01',
+                    end_date: '2099-07-10',
+                },
+            ],
+            error: null,
+        })
 
         getUser = vi.fn().mockResolvedValue({
             data: {user: {id: 'user-1'}},
@@ -177,6 +196,41 @@ describe('Trip workspace page', () => {
         expect(screen.queryByText('Delete this trip')).toBeNull()
         expect(screen.getByRole('button', {name: 'Leave trip'})).toBeTruthy()
         expect(screen.queryByRole('button', {name: 'Remove member'})).toBeNull()
+    })
+
+    it('shows the candidate date windows to every member', async () => {
+        getUser.mockResolvedValueOnce({
+            data: {user: {id: 'member-2'}},
+            error: null,
+        })
+
+        await renderContent()
+
+        expect(screen.getByText('Candidate dates')).toBeTruthy()
+        expect(screen.getByText(/1 Jul 2099/)).toBeTruthy()
+        expect(screen.getByText(/10 Jul 2099/)).toBeTruthy()
+        expect(screen.queryByRole('button', {name: 'Add date window'})).toBeNull()
+    })
+
+    it('lets the organizer add date windows', async () => {
+        await renderContent()
+
+        expect(screen.getByRole('button', {name: 'Add date window'})).toBeTruthy()
+    })
+
+    it('renders an error message when the date windows query fails', async () => {
+        const databaseError = {message: 'Windows unavailable'}
+        query.order.mockResolvedValueOnce({data: null, error: databaseError})
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await renderContent()
+
+        expect(screen.getByText('Could not load candidate dates')).toBeTruthy()
+        expect(screen.getByText('Windows unavailable')).toBeTruthy()
+        expect(consoleError).toHaveBeenCalledWith(
+            'Error fetching date windows:',
+            databaseError
+        )
     })
 
     it('renders an error message when the trip query fails', async () => {
