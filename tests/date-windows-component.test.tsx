@@ -5,7 +5,7 @@
 
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DateWindows } from '@/app/trips/[id]/date-windows'
 import * as actions from '@/app/trips/actions/date-windows'
 
@@ -31,6 +31,7 @@ function fillDates(start: string, end: string, prefix = 'new') {
 
 describe('DateWindows', () => {
   beforeEach(() => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     vi.mocked(actions.addDateWindow).mockResolvedValue({ success: true })
     vi.mocked(actions.updateDateWindow).mockResolvedValue({ success: true })
     vi.mocked(actions.deleteDateWindow).mockResolvedValue({ success: true })
@@ -39,6 +40,7 @@ describe('DateWindows', () => {
   afterEach(() => {
     cleanup()
     vi.clearAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('shows an empty state when there are no windows', () => {
@@ -81,6 +83,19 @@ describe('DateWindows', () => {
       'The end date cannot be before the start date.'
     )
     expect(actions.addDateWindow).not.toHaveBeenCalled()
+  })
+
+  it('shows loading feedback while adding a window', async () => {
+    let resolve!: (result: actions.DateWindowResult) => void
+    vi.mocked(actions.addDateWindow).mockReturnValueOnce(new Promise((done) => { resolve = done }))
+    render(<DateWindows tripId="trip-1" windows={[]} isOrganizer />)
+
+    fillDates('2099-09-01', '2099-09-07')
+    fireEvent.click(screen.getByRole('button', { name: 'Add date window' }))
+
+    expect((screen.getByRole('button', { name: 'Adding…' }) as HTMLButtonElement).disabled).toBe(true)
+    await act(async () => { resolve({ success: true }) })
+    expect((screen.getByRole('button', { name: 'Add date window' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('shows a validation error when the start date is in the past', () => {
@@ -141,7 +156,18 @@ describe('DateWindows', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[1])
 
+    expect(window.confirm).toHaveBeenCalledWith('Delete this date window? This action cannot be undone.')
     await waitFor(() => expect(actions.deleteDateWindow).toHaveBeenCalledWith('trip-1', 'w2'))
+  })
+
+  it('does not delete a window when confirmation is cancelled', () => {
+    vi.mocked(window.confirm).mockReturnValueOnce(false)
+    render(<DateWindows tripId="trip-1" windows={windows} isOrganizer />)
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+
+    expect(actions.deleteDateWindow).not.toHaveBeenCalled()
+    expect(screen.getByText(/1 Jul 2099/)).toBeTruthy()
   })
 
   it('shows an error when deleting fails', async () => {

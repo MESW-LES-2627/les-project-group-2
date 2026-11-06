@@ -44,6 +44,7 @@ function formatDate(value: string): string {
 export function DateWindows({ tripId, windows, isOrganizer }: DateWindowsProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pendingAction, setPendingAction] = useState<'add' | 'update' | 'delete' | null>(null)
   const [isPending, startTransition] = useTransition()
   const today = toIsoDate()
 
@@ -63,6 +64,7 @@ export function DateWindows({ tripId, windows, isOrganizer }: DateWindowsProps) 
       return
     }
 
+    setPendingAction(windowId ? 'update' : 'add')
     startTransition(async () => {
       const result: DateWindowResult = windowId
         ? await updateDateWindow(tripId, windowId, startDate, endDate)
@@ -81,9 +83,14 @@ export function DateWindows({ tripId, windows, isOrganizer }: DateWindowsProps) 
   }
 
   /**
-   * @brief Deletes a window on the server.
+   * @brief Confirms before deleting a window on the server.
    */
   const handleDelete = (windowId: string) => {
+    if (!window.confirm('Delete this date window? This action cannot be undone.')) {
+      return
+    }
+
+    setPendingAction('delete')
     startTransition(async () => {
       const result = await deleteDateWindow(tripId, windowId)
       setError(result.error ?? null)
@@ -148,7 +155,7 @@ export function DateWindows({ tripId, windows, isOrganizer }: DateWindowsProps) 
                     disabled={isPending}
                     className="rounded-full bg-blue-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:opacity-50"
                   >
-                    Save window
+                    {isPending && pendingAction === 'update' ? 'Saving…' : 'Save window'}
                   </button>
                   <button
                     type="button"
@@ -171,6 +178,7 @@ export function DateWindows({ tripId, windows, isOrganizer }: DateWindowsProps) 
                   <div className="flex gap-4">
                     <button
                       type="button"
+                      disabled={isPending}
                       onClick={() => {
                         setEditingId(window.id)
                         setError(null)
@@ -219,7 +227,7 @@ export function DateWindows({ tripId, windows, isOrganizer }: DateWindowsProps) 
               disabled={isPending}
               className="rounded-full bg-blue-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:opacity-50"
             >
-              Add date window
+              {isPending && pendingAction === 'add' ? 'Adding…' : 'Add date window'}
             </button>
           </div>
         </form>

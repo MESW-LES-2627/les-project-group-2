@@ -162,7 +162,7 @@ describe('date window server actions', () => {
         success: true,
       })
       expect(windowsQuery.update).toHaveBeenCalledWith(
-        expect.objectContaining({ start_date: FUTURE_START, end_date: FUTURE_END })
+        { start_date: FUTURE_START, end_date: FUTURE_END }
       )
       expect(windowsQuery.eq).toHaveBeenCalledWith('id', 'window-1')
       expect(windowsQuery.eq).toHaveBeenCalledWith('trip_id', 'trip-1')

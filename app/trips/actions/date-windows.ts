@@ -122,7 +122,6 @@ export async function updateDateWindow(
     .update({
       start_date: startDate,
       end_date: endDate,
-      updated_at: new Date().toISOString(),
     })
     .eq('id', windowId)
     .eq('trip_id', tripId)

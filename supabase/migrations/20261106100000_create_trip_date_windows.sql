@@ -13,6 +13,23 @@ create table if not exists public.trip_date_windows (
 create index if not exists trip_date_windows_trip_id_idx
     on public.trip_date_windows (trip_id, start_date);
 
+-- Auto-update updated_at on row changes
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+    new.updated_at = now();
+    return new;
+end;
+$$;
+
+drop trigger if exists trip_date_windows_set_updated_at on public.trip_date_windows;
+create trigger trip_date_windows_set_updated_at
+    before update on public.trip_date_windows
+    for each row execute function public.set_updated_at();
+
 alter table public.trip_date_windows enable row level security;
 
 revoke all on public.trip_date_windows from public, anon, authenticated;
