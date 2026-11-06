@@ -36,6 +36,10 @@ vi.mock('@/app/trips/actions/date-windows', () => ({
     deleteDateWindow: vi.fn(),
 }))
 
+vi.mock('@/app/trips/actions/availability', () => ({
+    saveAvailability: vi.fn(),
+}))
+
 type TripWorkspacePageProps = {
     params: Promise<{id: string}>
 }
@@ -57,6 +61,7 @@ const trip = {
 
 describe('Trip workspace page', () => {
     let query: Query
+    let availabilityQuery: Query
     let getUser: ReturnType<typeof vi.fn>
     let getTripMembers: ReturnType<typeof vi.fn>
 
@@ -80,6 +85,22 @@ describe('Trip workspace page', () => {
                     start_date: '2099-07-01',
                     end_date: '2099-07-10',
                 },
+            ],
+            error: null,
+        })
+
+        availabilityQuery = {
+            select: vi.fn(),
+            eq: vi.fn(),
+            maybeSingle: vi.fn(),
+            order: vi.fn(),
+        }
+        availabilityQuery.select.mockReturnValue(availabilityQuery)
+        availabilityQuery.eq.mockReturnValue(availabilityQuery)
+        availabilityQuery.order.mockResolvedValue({
+            data: [
+                {user_id: 'user-1', day: '2099-07-02', status: 'available'},
+                {user_id: 'user-1', day: '2099-07-03', status: 'unavailable'},
             ],
             error: null,
         })
@@ -108,7 +129,9 @@ describe('Trip workspace page', () => {
 
         vi.mocked(supabaseServer.createClient).mockResolvedValue({
             auth: {getUser},
-            from: vi.fn(() => query),
+            from: vi.fn((table: string) =>
+                table === 'trip_availability' ? availabilityQuery : query
+            ),
             rpc: getTripMembers,
         } as never)
         vi.mocked(navigation.redirect).mockImplementation(() => {
@@ -170,7 +193,7 @@ describe('Trip workspace page', () => {
         expect(screen.getByText('You')).toBeTruthy()
         expect(screen.getByText('Edit trip details')).toBeTruthy()
         expect(screen.getByText('Trip members')).toBeTruthy()
-        expect(screen.getByText('Trip Member')).toBeTruthy()
+        expect(screen.getByText('Trip Member', {selector: 'p'})).toBeTruthy()
         expect(screen.getByText('member@example.com')).toBeTruthy()
         expect(screen.getByText('organizer')).toBeTruthy()
         expect(screen.getByRole('button', {name: 'Remove member'})).toBeTruthy()
@@ -207,8 +230,7 @@ describe('Trip workspace page', () => {
         await renderContent()
 
         expect(screen.getByText('Candidate dates')).toBeTruthy()
-        expect(screen.getByText(/1 Jul 2099/)).toBeTruthy()
-        expect(screen.getByText(/10 Jul 2099/)).toBeTruthy()
+        expect(screen.getByText(/1 Jul 2099 → 10 Jul 2099/, {selector: 'p'})).toBeTruthy()
         expect(screen.queryByRole('button', {name: 'Add date window'})).toBeNull()
     })
 
@@ -229,6 +251,38 @@ describe('Trip workspace page', () => {
         expect(screen.getByText('Windows unavailable')).toBeTruthy()
         expect(consoleError).toHaveBeenCalledWith(
             'Error fetching date windows:',
+            databaseError
+        )
+    })
+
+    it('shows the availability calendar with overlaps and who is still missing', async () => {
+        await renderContent()
+
+        expect(screen.getByText('Availability')).toBeTruthy()
+        expect(screen.getAllByText(/\/2 available/)).toHaveLength(10)
+        expect(screen.getByText('1/2 available', {selector: 'span'})).toBeTruthy()
+        expect(screen.getByText('Trip Member', {selector: 'span'})).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Save my availability'})).toBeTruthy()
+    })
+
+    it('hides the availability calendar when there are no date windows', async () => {
+        query.order.mockResolvedValueOnce({data: [], error: null})
+
+        await renderContent()
+
+        expect(screen.queryByText('Availability')).toBeNull()
+    })
+
+    it('renders an error message when the availability query fails', async () => {
+        const databaseError = {message: 'Availability unavailable'}
+        availabilityQuery.order.mockResolvedValueOnce({data: null, error: databaseError})
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await renderContent()
+
+        expect(screen.getByText('Could not load availability')).toBeTruthy()
+        expect(consoleError).toHaveBeenCalledWith(
+            'Error fetching availability:',
             databaseError
         )
     })
