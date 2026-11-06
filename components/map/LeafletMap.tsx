@@ -15,6 +15,7 @@ import {
   PORTUGAL_DEFAULT_ZOOM,
   getCategoryColor,
   getCartoTileUrl,
+  getPinVoteCount,
 } from '@/types/map'
 
 interface FlyToTarget {
@@ -165,9 +166,11 @@ export default function LeafletMap({
         className: 'leaflet-tooltip-custom',
       })
 
+      const voteCount = getPinVoteCount(pin)
       marker.bindPopup(`
         <div style="font-family: inherit; font-size: 13px; font-weight: 600; color: #0f172a; padding: 2px 4px;">
           ${pin.name}
+          ${voteCount > 0 ? `<div style="font-size: 11px; color: #475569; font-weight: 500; margin-top: 2px;">👍 ${voteCount} ${voteCount === 1 ? 'vote' : 'votes'}</div>` : ''}
         </div>
       `)
 

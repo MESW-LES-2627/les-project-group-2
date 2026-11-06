@@ -3,8 +3,12 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
+import { savePicture } from '@/app/image_manager/image_lib'
 
-export type AuthState = { error?: string; message?: string } | null
+export type AuthState = {
+  error?: string
+  message?: string
+} | null
 
 export async function login(
   prevState: AuthState,
@@ -17,12 +21,14 @@ export async function login(
     password: formData.get('password') as string,
   })
 
-  if (error) {
-    return { error: error.message }
-  }
+  if (error) { return { error: error.message }}
+
+  const rawRedirect = formData.get('redirectTo') as string
+  const destination = rawRedirect && rawRedirect.startsWith('/') ? rawRedirect : '/dashboard'
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  revalidatePath('/dashboard')
+  redirect(destination)
 }
 
 export async function signup(
@@ -31,27 +37,77 @@ export async function signup(
 ): Promise<AuthState> {
   const supabase = await createClient()
 
+  const password = formData.get('password') as string
+  const passwordConf = formData.get('password_conf') as string | null
+  const user = (formData.get('username') as string) || ''
+  const email = formData.get('email') as string
+
+  if (formData.has('password_conf') && password !== passwordConf) {
+    return { error: 'Something went wrong. Pheraps the passwords don\'t match?' }
+  }
+
+  if (formData.has('username') && !user.trim()) {
+    return { error: 'Username is required' }
+  }
+
   const { data, error } = await supabase.auth.signUp({
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
+    email,
+    password,
+    options: {
+      data : {username : user}
+    },
   })
+
+  if (error) { return { error: error.message }}
+
+  if (!data?.session) {
+    return { error: 'Verify your email. If you are already registered, please consider logging in.' }
+  }
+
+  const userId = data.user?.id || data.session.user?.id
+  let avatarUrl: string | null = null
+  const profilePic = formData.get('profile_pic') as File | null
+
+  if (profilePic && profilePic.size > 0) {
+    const uploadRes = await savePicture(formData, userId, 'profile_pics', supabase)
+    if (uploadRes && 'error' in uploadRes && uploadRes.error) {
+      return { error: uploadRes.error }
+    }
+    if (uploadRes && 'url' in uploadRes && uploadRes.url) {
+      avatarUrl = uploadRes.url
+    }
+  }
+
+  const finalUsername = (formData.get('username') as string)?.trim() || null
+
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .update({
+      username: finalUsername,
+      avatar_url: avatarUrl,
+    })
+    .eq('id', userId)
+
+  if (profileError) {
+    return { error: profileError.message }
+  }
+
+  const rawRedirect = formData.get('redirectTo') as string
+  const destination = rawRedirect && rawRedirect.startsWith('/') ? rawRedirect : '/dashboard'
+
+  revalidatePath('/', 'layout')
+  redirect(destination)
+}
+
+export async function logout() {
+  const supabase = await createClient()
+
+  const { error } = await supabase.auth.signOut()
 
   if (error) {
     return { error: error.message }
   }
 
-  // Email confirmations are disabled, so Supabase returns an active session
-  // and the new user can enter the application immediately.
-  if (data.session) {
-    revalidatePath('/', 'layout')
-    redirect('/dashboard')
-  }
-
-  return { error: 'Unable to start a session after sign-up. Please try logging in.' }
-}
-
-export async function logout() {
-  const supabase = await createClient()
-  await supabase.auth.signOut()
+  revalidatePath('/', 'layout')
   redirect('/entry')
 }

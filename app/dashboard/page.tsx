@@ -36,10 +36,29 @@ async function Content() {
 
   if (!user) redirect('/entry')
 
+  let currentUsername: string | undefined
+  let currentUserAvatar: string | null = null
+
+  if (typeof supabase.from === 'function') {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username, avatar_url')
+      .eq('id', user.id)
+      .single()
+
+    if (profile) {
+      currentUsername = profile.username ?? undefined
+      currentUserAvatar = profile.avatar_url ?? null
+    }
+  }
+
   return (
     <main className="w-screen h-screen overflow-hidden">
       <TripMapContainer
+        key={user.id}
         currentUserEmail={user.email}
+        currentUsername={currentUsername}
+        currentUserAvatar={currentUserAvatar}
         cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
       />
     </main>

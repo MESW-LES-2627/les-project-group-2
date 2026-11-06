@@ -2,7 +2,7 @@ import { useState, useActionState } from 'react'
 import { Eye, EyeOff, Lock, User } from 'lucide-react'
 import { login } from '../actions/auth'
 
-export function LoginBox({onSwitch} : {onSwitch : () => void}){
+export function LoginBox({onSwitch, redirectTo} : {onSwitch : () => void; redirectTo?: string}){
   const [visible, setVisible] = useState(false) 
   const [login_res, login_action, pending] = useActionState(login, null)
 
@@ -14,6 +14,7 @@ export function LoginBox({onSwitch} : {onSwitch : () => void}){
       </p>
 
       <form className="mt-8 flex flex-col gap-4" action={login_action}>
+        {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
 
         <div className="relative">
           <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
