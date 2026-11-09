@@ -63,6 +63,7 @@ const trip = {
 describe('Trip workspace page', () => {
     let query: Query
     let availabilityQuery: Query
+    let itineraryQuery: Query
     let getUser: ReturnType<typeof vi.fn>
     let getTripMembers: ReturnType<typeof vi.fn>
 
@@ -109,6 +110,17 @@ describe('Trip workspace page', () => {
             error: null,
         })
 
+        itineraryQuery = {
+            select: vi.fn(),
+            eq: vi.fn(),
+            maybeSingle: vi.fn(),
+            order: vi.fn(),
+            range: vi.fn(),
+        }
+        itineraryQuery.select.mockReturnValue(itineraryQuery)
+        itineraryQuery.eq.mockReturnValue(itineraryQuery)
+        itineraryQuery.order.mockResolvedValue({data: [], error: null})
+
         getUser = vi.fn().mockResolvedValue({
             data: {user: {id: 'user-1'}},
             error: null,
@@ -133,9 +145,11 @@ describe('Trip workspace page', () => {
 
         vi.mocked(supabaseServer.createClient).mockResolvedValue({
             auth: {getUser},
-            from: vi.fn((table: string) =>
-                table === 'trip_availability' ? availabilityQuery : query
-            ),
+            from: vi.fn((table: string) => {
+                if (table === 'trip_availability') return availabilityQuery
+                if (table === 'trip_itinerary_days') return itineraryQuery
+                return query
+            }),
             rpc: getTripMembers,
         } as never)
         vi.mocked(navigation.redirect).mockImplementation(() => {
@@ -344,6 +358,57 @@ describe('Trip workspace page', () => {
         expect(screen.getByText('Could not load availability')).toBeTruthy()
         expect(consoleError).toHaveBeenCalledWith(
             'Error fetching availability:',
+            databaseError
+        )
+    })
+
+    it('shows the locked dates and makes dates and availability read-only', async () => {
+        query.maybeSingle.mockResolvedValue({
+            data: {
+                ...trip,
+                state: 'Dates locked',
+                locked_start_date: '2099-07-02',
+                locked_end_date: '2099-07-05',
+            },
+            error: null,
+        })
+        itineraryQuery.order.mockResolvedValue({
+            data: [
+                {day: '2099-07-02'},
+                {day: '2099-07-03'},
+                {day: '2099-07-04'},
+                {day: '2099-07-05'},
+            ],
+            error: null,
+        })
+
+        await renderContent()
+
+        expect(screen.getByText('Dates locked')).toBeTruthy()
+        expect(screen.getByText('2 Jul 2099 → 5 Jul 2099')).toBeTruthy()
+        expect(screen.getByText(/4 itinerary days created/)).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Unlock dates'})).toBeTruthy()
+        expect(screen.queryByRole('button', {name: 'Add date window'})).toBeNull()
+        expect(screen.queryByRole('button', {name: 'Save my availability'})).toBeNull()
+    })
+
+    it('lets the organizer lock the dates while they are unlocked', async () => {
+        await renderContent()
+
+        expect(screen.getByRole('button', {name: 'Lock dates'})).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Save my availability'})).toBeTruthy()
+    })
+
+    it('renders an error message when the itinerary days query fails', async () => {
+        const databaseError = {message: 'Itinerary unavailable'}
+        itineraryQuery.order.mockResolvedValueOnce({data: null, error: databaseError})
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await renderContent()
+
+        expect(screen.getByText('Could not load trip dates')).toBeTruthy()
+        expect(consoleError).toHaveBeenCalledWith(
+            'Error fetching itinerary days:',
             databaseError
         )
     })

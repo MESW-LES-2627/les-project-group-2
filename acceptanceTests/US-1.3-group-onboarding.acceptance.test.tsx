@@ -106,7 +106,7 @@ describe('US-1.3 Acceptance Tests: Group Onboarding via Link/Code', () => {
       from: vi.fn((table: string) => {
         if (table === 'trips') return mockTripsQuery
         if (table === 'trip_members') return mockMembersQuery
-        if (table === 'trip_date_windows' || table === 'trip_availability') {
+        if (table === 'trip_date_windows' || table === 'trip_availability' || table === 'trip_itinerary_days') {
           const windowsQuery = {
             select: vi.fn(() => windowsQuery),
             eq: vi.fn(() => windowsQuery),

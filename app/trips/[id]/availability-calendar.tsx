@@ -15,6 +15,7 @@ interface AvailabilityCalendarProps {
   missing: string[]
   memberCount: number
   myAnswers: Record<string, 'available' | 'unavailable'>
+  locked?: boolean
 }
 
 const choices: { value: AvailabilityChoice; label: string }[] = [
@@ -48,6 +49,7 @@ export function AvailabilityCalendar({
   missing,
   memberCount,
   myAnswers,
+  locked = false,
 }: AvailabilityCalendarProps) {
   const [draftState, setDraftState] = useState({
     days,
@@ -96,7 +98,9 @@ export function AvailabilityCalendar({
     <section className="mt-8 rounded-3xl bg-white p-7 shadow-sm sm:p-8">
       <h2 className="text-xl font-bold text-gray-900">Availability</h2>
       <p className="mt-1 text-sm text-gray-500">
-        Mark the days that work for you and see where the group overlaps.
+        {locked
+          ? 'The trip dates are locked, so availability is read-only.'
+          : 'Mark the days that work for you and see where the group overlaps.'}
       </p>
 
       {missing.length > 0 && (
@@ -139,6 +143,7 @@ export function AvailabilityCalendar({
             <select
               id={`answer-${day}`}
               value={draft[day] ?? 'none'}
+              disabled={locked}
               onChange={(event) =>
                 setDraftState({
                   days,
@@ -146,7 +151,7 @@ export function AvailabilityCalendar({
                   answers: { ...draft, [day]: event.target.value as AvailabilityChoice },
                 })
               }
-              className="mt-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="mt-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {choices.map((choice) => (
                 <option key={choice.value} value={choice.value}>
@@ -158,14 +163,16 @@ export function AvailabilityCalendar({
         ))}
       </ul>
 
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={isPending}
-        className="mt-6 rounded-full bg-blue-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:opacity-50"
-      >
-        Save my availability
-      </button>
+      {!locked && (
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isPending}
+          className="mt-6 rounded-full bg-blue-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:opacity-50"
+        >
+          Save my availability
+        </button>
+      )}
     </section>
   )
 }
