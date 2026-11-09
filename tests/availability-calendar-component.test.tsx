@@ -177,4 +177,15 @@ describe('AvailabilityCalendar', () => {
 
     expect((await screen.findByRole('alert')).textContent).toBe('Failed to save your availability.')
   })
+
+  it('is read-only once the trip dates are locked', () => {
+    renderCalendar({ locked: true, myAnswers: { '2099-07-01': 'available' } })
+
+    expect(screen.getByText('The trip dates are locked, so availability is read-only.')).toBeTruthy()
+    for (const select of screen.getAllByRole('combobox')) {
+      expect((select as HTMLSelectElement).disabled).toBe(true)
+    }
+    expect((screen.getAllByRole('combobox')[0] as HTMLSelectElement).value).toBe('available')
+    expect(screen.queryByRole('button', { name: 'Save my availability' })).toBeNull()
+  })
 })
