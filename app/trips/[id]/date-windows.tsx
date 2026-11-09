@@ -18,6 +18,7 @@ interface DateWindowsProps {
   tripId: string
   windows: DateWindow[]
   isOrganizer: boolean
+  locked?: boolean
 }
 
 const inputClass =
@@ -41,7 +42,8 @@ function formatDate(value: string): string {
  * @brief Lists the candidate date windows of a trip and lets the organizer add, edit and delete them.
  * @param props Component properties containing the trip id, its windows and the viewer's role.
  */
-export function DateWindows({ tripId, windows, isOrganizer }: DateWindowsProps) {
+export function DateWindows({ tripId, windows, isOrganizer, locked = false }: DateWindowsProps) {
+  const canEdit = isOrganizer && !locked
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<'add' | 'update' | 'delete' | null>(null)
@@ -103,7 +105,9 @@ export function DateWindows({ tripId, windows, isOrganizer }: DateWindowsProps) 
       <p className="mt-1 text-sm text-gray-500">
         {windows.length === 0
           ? 'No date windows have been proposed yet.'
-          : 'The organizer proposed these windows. Pick the ones that work for you.'}
+          : locked
+            ? 'The trip dates are locked, so the candidate windows can no longer be changed.'
+            : 'The organizer proposed these windows. Pick the ones that work for you.'}
       </p>
 
       {error && (
@@ -174,7 +178,7 @@ export function DateWindows({ tripId, windows, isOrganizer }: DateWindowsProps) 
                 <p className="font-medium text-gray-900">
                   {formatDate(window.start_date)} → {formatDate(window.end_date)}
                 </p>
-                {isOrganizer && (
+                {canEdit && (
                   <div className="flex gap-4">
                     <button
                       type="button"
@@ -203,7 +207,7 @@ export function DateWindows({ tripId, windows, isOrganizer }: DateWindowsProps) 
         ))}
       </ul>
 
-      {isOrganizer && (
+      {canEdit && (
         <form
           noValidate
           onSubmit={handleSubmit(null)}
