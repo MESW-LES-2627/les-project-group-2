@@ -26,6 +26,7 @@ export interface Pin {
   proposedBy: string
   createdAt: string
   votes?: PinVote[]
+  isConfirmed?: boolean
 }
 
 export interface PlaceSearchResult {
