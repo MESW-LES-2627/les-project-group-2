@@ -3,7 +3,7 @@
 
 /**
  * @file components/map/TripMapContainer.tsx
- * @brief Simplified full-screen Carto Leaflet map with search bar, user profile badge, in-place pin voting, confirmed spots, and sign out.
+ * @brief Simplified full-screen Carto Leaflet map with search bar, user profile badge, in-place pin voting, pin editing/deletion, confirmed spots, and sign out.
  */
 
 import { useState, useCallback } from 'react'
@@ -13,6 +13,7 @@ import { logout } from '@/app/entry/actions/auth'
 import { SearchBar } from './SearchBar'
 import { TripsCard } from './TripsCard'
 import { ConfirmedSpotsCard } from './ConfirmedSpotsCard'
+import { EditPinModal } from './EditPinModal'
 import type { UserMemberTrip } from '@/app/trips/actions/get-member-trips'
 import { Pin, PlaceSearchResult } from '@/types/map'
 import { PinVoteCard } from './PinVoteCard'
@@ -42,7 +43,7 @@ interface TripMapContainerProps {
 }
 
 /**
- * @brief Simplified full-screen interactive map with search bar, profile drawer, in-place pin voting, and confirmed spots list.
+ * @brief Simplified full-screen interactive map with search bar, profile drawer, in-place pin voting, pin editing/deletion, and confirmed spots list.
  * @param props Component properties.
  */
 export function TripMapContainer({
@@ -58,6 +59,7 @@ export function TripMapContainer({
 }: TripMapContainerProps) {
   const [pins, setPins] = useState<Pin[]>(initialPins)
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
+  const [editingPin, setEditingPin] = useState<Pin | null>(null)
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number; zoom?: number } | null>(null)
   const [isTripsCardOpen, setIsTripsCardOpen] = useState(false)
   const [isConfirmedSpotsOpen, setIsConfirmedSpotsOpen] = useState(false)
@@ -157,6 +159,23 @@ export function TripMapContainer({
     const updated: Pin = { ...pinToRevert, isConfirmed: false }
     setPins((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
     setSelectedPin((prev) => (prev?.id === updated.id ? updated : prev))
+  }, [])
+
+  /**
+   * @brief Handles saving pin edits.
+   */
+  const handleSavePinEdit = useCallback((updatedPin: Pin) => {
+    setPins((prev) => prev.map((p) => (p.id === updatedPin.id ? updatedPin : p)))
+    setSelectedPin((prev) => (prev?.id === updatedPin.id ? updatedPin : prev))
+    setEditingPin(null)
+  }, [])
+
+  /**
+   * @brief Handles deleting a pin (removes pin and its votes).
+   */
+  const handleDeletePin = useCallback((pinId: string) => {
+    setPins((prev) => prev.filter((p) => p.id !== pinId))
+    setSelectedPin(null)
   }, [])
 
   return (
@@ -300,7 +319,7 @@ export function TripMapContainer({
         onPinClick={handlePinClick}
       />
 
-      {/* In-Place Pin Details, Voting, and Confirmation Card */}
+      {/* In-Place Pin Details, Voting, Edit, Delete, and Confirmation Card */}
       {selectedPin && (
         <PinVoteCard
           pin={selectedPin}
@@ -309,7 +328,19 @@ export function TripMapContainer({
           isOrganizer={isOrganizer}
           onVoteChange={handleVoteChange}
           onConfirmToggle={handleConfirmToggle}
+          onEdit={(pin) => setEditingPin(pin)}
+          onDelete={handleDeletePin}
           onClose={() => setSelectedPin(null)}
+        />
+      )}
+
+      {/* Edit Pin Modal Dialog */}
+      {editingPin && (
+        <EditPinModal
+          isOpen={Boolean(editingPin)}
+          pin={editingPin}
+          onSave={handleSavePinEdit}
+          onClose={() => setEditingPin(null)}
         />
       )}
     </div>
