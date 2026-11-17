@@ -16,7 +16,6 @@ import type { UserMemberTrip } from '@/app/trips/actions/get-member-trips'
 import { Pin, PlaceSearchResult } from '@/types/map'
 import { PinVoteCard } from './PinVoteCard'
 import { ProfileCard } from '@/components/profile'
-import Link from 'next/link'
 
 // Dynamic import of LeafletMap with SSR disabled to prevent `window is not defined`
 const DynamicLeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -36,6 +35,136 @@ interface TripMapContainerProps {
   cartoApiKey?: string
   initialTrips?: UserMemberTrip[]
   initialPins?: Pin[]
+}
+
+interface MapHeaderProps {
+  isTripsCardOpen: boolean
+  onToggleTripsCard: () => void
+  onSelectPlace: (place: PlaceSearchResult) => void
+  displayName?: string
+  avatarUrl?: string | null
+  isProfileOpen: boolean
+  onToggleProfile: () => void
+}
+
+function MapHeader({
+  isTripsCardOpen,
+  onToggleTripsCard,
+  onSelectPlace,
+  displayName,
+  avatarUrl,
+  isProfileOpen,
+  onToggleProfile,
+}: MapHeaderProps) {
+  return (
+    <header className="absolute top-0 inset-x-0 z-[800] p-4 pointer-events-none flex items-center justify-between gap-3">
+      {/* Left: App Logo Badge */}
+      <div className="shrink-0 pointer-events-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10 text-white text-xs font-semibold shadow-lg backdrop-blur-md">
+          <MapPin className="h-4 w-4 text-blue-400" />
+          <span className="hidden sm:inline">PlanIt</span>
+        </div>
+
+        {/* Button to open member trips card */}
+        <button
+          type="button"
+          data-testid="toggle-trips-card-button"
+          onClick={onToggleTripsCard}
+          aria-expanded={isTripsCardOpen}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-white text-xs font-semibold shadow-lg backdrop-blur-md transition-colors ${
+            isTripsCardOpen
+              ? 'bg-slate-800 border-white/30 text-sky-300'
+              : 'bg-slate-900/85 hover:bg-slate-800 border-white/10'
+          }`}
+          title="My Trips"
+        >
+          <Compass className="h-3.5 w-3.5 text-blue-400" />
+          <span>Trips</span>
+        </button>
+      </div>
+
+      {/* Center: Simple Search Bar */}
+      <div className="pointer-events-auto flex-1 max-w-md mx-auto">
+        <SearchBar
+          onSelectPlace={onSelectPlace}
+          placeholder="Search places across the map..."
+        />
+      </div>
+
+      {/* Right: User Profile Button & Sign Out */}
+      <div className="shrink-0 pointer-events-auto flex items-center gap-2">
+        {displayName && (
+          <button
+            type="button"
+            onClick={onToggleProfile}
+            aria-expanded={isProfileOpen}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
+            title={displayName}
+          >
+            <span className="relative flex h-6 w-6 shrink-0 overflow-hidden rounded-full border border-white/20 bg-slate-800">
+              <img
+                src={avatarUrl || '/no_pic.png'}
+                alt={displayName}
+                onError={(e) => {
+                  e.currentTarget.src = '/no_pic.png'
+                }}
+                className="h-full w-full object-cover"
+              />
+            </span>
+            <span className="hidden md:inline font-medium text-slate-200">
+              {displayName}
+            </span>
+          </button>
+        )}
+        <form action={async () => { await logout() }}>
+          <button
+            type="submit"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
+            title="Sign out"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Sign out</span>
+          </button>
+        </form>
+      </div>
+    </header>
+  )
+}
+
+interface ProfileModalProps {
+  isOpen: boolean
+  onClose: () => void
+  currentUserEmail?: string
+  username?: string
+  avatarUrl?: string | null
+  onUpdate: (params: { username: string; avatarUrl?: string | null }) => void
+}
+
+function ProfileModal({
+  isOpen,
+  onClose,
+  currentUserEmail,
+  username,
+  avatarUrl,
+  onUpdate,
+}: ProfileModalProps) {
+  if (!isOpen) return null
+
+  return (
+    <div className="absolute inset-0 z-[850] flex items-center justify-center p-4 pointer-events-none">
+      <div className="pointer-events-auto">
+        <ProfileCard
+          key={isOpen ? 'open' : 'closed'}
+          isOpen={isOpen}
+          onClose={onClose}
+          currentUserEmail={currentUserEmail}
+          currentUsername={username}
+          currentUserAvatar={avatarUrl}
+          onProfileUpdate={onUpdate}
+        />
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -127,77 +256,15 @@ export function TripMapContainer({
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-950">
       {/* Top Floating Header with Search Bar and Sign Out */}
-      <header className="absolute top-0 inset-x-0 z-[800] p-4 pointer-events-none flex items-center justify-between gap-3">
-        {/* Left: App Logo Badge */}
-        <div className="shrink-0 pointer-events-auto flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10 text-white text-xs font-semibold shadow-lg backdrop-blur-md">
-            <MapPin className="h-4 w-4 text-blue-400" />
-            <span className="hidden sm:inline">PlanIt</span>
-          </div>
-
-          {/* Button to open member trips card */}
-          <button
-            type="button"
-            data-testid="toggle-trips-card-button"
-            onClick={() => setIsTripsCardOpen((prev) => !prev)}
-            aria-expanded={isTripsCardOpen}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-white text-xs font-semibold shadow-lg backdrop-blur-md transition-colors ${
-              isTripsCardOpen
-                ? 'bg-slate-800 border-white/30 text-sky-300'
-                : 'bg-slate-900/85 hover:bg-slate-800 border-white/10'
-            }`}
-            title="My Trips"
-          >
-            <Compass className="h-3.5 w-3.5 text-blue-400" />
-            <span>Trips</span>
-          </button>
-        </div>
-
-        {/* Center: Simple Search Bar */}
-        <div className="pointer-events-auto flex-1 max-w-md mx-auto">
-          <SearchBar
-            onSelectPlace={handleSelectPlace}
-            placeholder="Search places across the map..."
-          />
-        </div>
-
-        {/* Right: User Profile Button & Sign Out */}
-        <div className="shrink-0 pointer-events-auto flex items-center gap-2">
-          {displayName && (
-            <button
-              type="button"
-              onClick={() => setIsProfileOpen((prev) => !prev)}
-              aria-expanded={isProfileOpen}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
-              title={displayName}
-            >
-              <span className="relative flex h-6 w-6 shrink-0 overflow-hidden rounded-full border border-white/20 bg-slate-800">
-                <img
-                  src={avatarUrl || '/no_pic.png'}
-                  alt={displayName}
-                  onError={(e) => {
-                    e.currentTarget.src = '/no_pic.png'
-                  }}
-                  className="h-full w-full object-cover"
-                />
-              </span>
-              <span className="hidden md:inline font-medium text-slate-200">
-                {displayName}
-              </span>
-            </button>
-          )}
-          <form action={async () => { await logout() }}>
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Sign out</span>
-            </button>
-          </form>
-        </div>
-      </header>
+      <MapHeader
+        isTripsCardOpen={isTripsCardOpen}
+        onToggleTripsCard={() => setIsTripsCardOpen((prev) => !prev)}
+        onSelectPlace={handleSelectPlace}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        isProfileOpen={isProfileOpen}
+        onToggleProfile={() => setIsProfileOpen((prev) => !prev)}
+      />
 
       {/* Floating Member Trips Card */}
       <TripsCard
@@ -206,26 +273,19 @@ export function TripMapContainer({
         initialTrips={initialTrips}
       />
       {/* Center Profile Modal Component */}
-      {isProfileOpen && (
-        <div className="absolute inset-0 z-[850] flex items-center justify-center p-4 pointer-events-none">
-          <div className="pointer-events-auto">
-            <ProfileCard
-              key={isProfileOpen ? 'open' : 'closed'}
-              isOpen={isProfileOpen}
-              onClose={() => setIsProfileOpen(false)}
-              currentUserEmail={currentUserEmail}
-              currentUsername={username}
-              currentUserAvatar={avatarUrl}
-              onProfileUpdate={({ username: newUsername, avatarUrl: newAvatarUrl }) => {
-                setUpdatedUsername(newUsername)
-                if (newAvatarUrl !== undefined) {
-                  setUpdatedAvatarUrl(newAvatarUrl)
-                }
-              }}
-            />
-          </div>
-        </div>
-      )}
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        currentUserEmail={currentUserEmail}
+        username={username}
+        avatarUrl={avatarUrl}
+        onUpdate={({ username: newUsername, avatarUrl: newAvatarUrl }) => {
+          setUpdatedUsername(newUsername)
+          if (newAvatarUrl !== undefined) {
+            setUpdatedAvatarUrl(newAvatarUrl)
+          }
+        }}
+      />
 
       {/* Full-screen Leaflet Map */}
       <DynamicLeafletMap

@@ -22,6 +22,119 @@ export type AvailabilityResult = {
 
 const CHOICES: AvailabilityChoice[] = ['available', 'unavailable', 'none']
 
+function validateAnswers(tripId: string, answers: AvailabilityAnswer[]): string | null {
+  if (!tripId) {
+    return 'Trip ID is required.'
+  }
+
+  if (answers.length === 0) {
+    return 'Choose your availability for at least one day.'
+  }
+
+  const hasInvalid = answers.some(
+    (answer) => !isValidIsoDate(answer.day) || !CHOICES.includes(answer.choice)
+  )
+  if (hasInvalid) {
+    return 'Invalid availability answer.'
+  }
+
+  return null
+}
+
+async function verifyMemberAccess(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tripId: string,
+  userId: string
+): Promise<string | null> {
+  const { data: membership, error: membershipError } = await supabase
+    .from('trip_members')
+    .select('id')
+    .eq('trip_id', tripId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (membershipError || !membership) {
+    return 'Only trip members can submit availability.'
+  }
+
+  return null
+}
+
+async function validateAgainstCandidateWindows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tripId: string,
+  answers: AvailabilityAnswer[]
+): Promise<string | null> {
+  const { data: windows, error: windowsError } = await supabase
+    .from('trip_date_windows')
+    .select('start_date, end_date')
+    .eq('trip_id', tripId)
+
+  if (windowsError) {
+    console.error('Error fetching date windows:', windowsError)
+    return 'Failed to load the candidate dates.'
+  }
+
+  const windowList = windows ?? []
+  const isInsideWindow = (day: string) =>
+    windowList.some((w) => day >= w.start_date && day <= w.end_date)
+
+  if (answers.some((answer) => !isInsideWindow(answer.day))) {
+    return 'Availability can only be set for days inside a candidate window.'
+  }
+
+  return null
+}
+
+async function persistAvailability(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tripId: string,
+  userId: string,
+  answers: AvailabilityAnswer[]
+): Promise<string | null> {
+  const answered = answers.filter(
+    (answer): answer is { day: string; choice: 'available' | 'unavailable' } =>
+      answer.choice !== 'none'
+  )
+  const cleared = answers
+    .filter((answer) => answer.choice === 'none')
+    .map((answer) => answer.day)
+
+  if (answered.length > 0) {
+    const { error } = await supabase.from('trip_availability').upsert(
+      answered.map((answer) => ({
+        trip_id: tripId,
+        user_id: userId,
+        day: answer.day,
+        status: answer.choice,
+        updated_at: new Date().toISOString(),
+      })),
+      { onConflict: 'trip_id,user_id,day' }
+    )
+
+    if (error) {
+      console.error('Error saving availability:', error)
+      return 'Failed to save your availability.'
+    }
+  }
+
+  if (cleared.length > 0) {
+    const { error } = await supabase
+      .from('trip_availability')
+      .delete()
+      .eq('trip_id', tripId)
+      .eq('user_id', userId)
+      .in('day', cleared)
+
+    if (error) {
+      console.error('Error clearing availability:', error)
+      return 'Failed to save your availability.'
+    }
+  }
+
+  return null
+}
+
 /**
  * @brief Saves the caller's availability. Days marked `none` have their answer removed.
  * Only members of the trip can answer, and only for days inside a candidate window.
@@ -33,16 +146,9 @@ export async function saveAvailability(
   tripId: string,
   answers: AvailabilityAnswer[]
 ): Promise<AvailabilityResult> {
-  if (!tripId) {
-    return { error: 'Trip ID is required.' }
-  }
-
-  if (answers.length === 0) {
-    return { error: 'Choose your availability for at least one day.' }
-  }
-
-  if (answers.some((answer) => !isValidIsoDate(answer.day) || !CHOICES.includes(answer.choice))) {
-    return { error: 'Invalid availability answer.' }
+  const validationError = validateAnswers(tripId, answers)
+  if (validationError) {
+    return { error: validationError }
   }
 
   const supabase = await createClient()
@@ -55,70 +161,19 @@ export async function saveAvailability(
     return { error: 'Authentication required.' }
   }
 
-  const { data: membership, error: membershipError } = await supabase
-    .from('trip_members')
-    .select('id')
-    .eq('trip_id', tripId)
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  if (membershipError || !membership) {
-    return { error: 'Only trip members can submit availability.' }
+  const memberError = await verifyMemberAccess(supabase, tripId, user.id)
+  if (memberError) {
+    return { error: memberError }
   }
 
-  const { data: windows, error: windowsError } = await supabase
-    .from('trip_date_windows')
-    .select('start_date, end_date')
-    .eq('trip_id', tripId)
-
-  if (windowsError) {
-    console.error('Error fetching date windows:', windowsError)
-    return { error: 'Failed to load the candidate dates.' }
+  const windowError = await validateAgainstCandidateWindows(supabase, tripId, answers)
+  if (windowError) {
+    return { error: windowError }
   }
 
-  const insideWindow = (day: string) =>
-    (windows ?? []).some((window) => day >= window.start_date && day <= window.end_date)
-
-  if (answers.some((answer) => !insideWindow(answer.day))) {
-    return { error: 'Availability can only be set for days inside a candidate window.' }
-  }
-
-  const answered = answers.filter(
-    (answer): answer is { day: string; choice: 'available' | 'unavailable' } =>
-      answer.choice !== 'none'
-  )
-  const cleared = answers.filter((answer) => answer.choice === 'none').map((answer) => answer.day)
-
-  if (answered.length > 0) {
-    const { error } = await supabase.from('trip_availability').upsert(
-      answered.map((answer) => ({
-        trip_id: tripId,
-        user_id: user.id,
-        day: answer.day,
-        status: answer.choice,
-        updated_at: new Date().toISOString(),
-      })),
-      { onConflict: 'trip_id,user_id,day' }
-    )
-
-    if (error) {
-      console.error('Error saving availability:', error)
-      return { error: 'Failed to save your availability.' }
-    }
-  }
-
-  if (cleared.length > 0) {
-    const { error } = await supabase
-      .from('trip_availability')
-      .delete()
-      .eq('trip_id', tripId)
-      .eq('user_id', user.id)
-      .in('day', cleared)
-
-    if (error) {
-      console.error('Error clearing availability:', error)
-      return { error: 'Failed to save your availability.' }
-    }
+  const saveError = await persistAvailability(supabase, tripId, user.id, answers)
+  if (saveError) {
+    return { error: saveError }
   }
 
   revalidatePath(`/trips/${tripId}`)
