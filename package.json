@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run --coverage && playwright test",
+    "test": "vitest run --coverage && playwright test --reporter=list",
     "test:unit": "vitest run",
     "test:acceptance": "playwright test",
     "db:start": "supabase start",
