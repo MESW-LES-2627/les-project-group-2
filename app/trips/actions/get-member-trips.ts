@@ -6,11 +6,13 @@
  */
 
 import { createClient } from '@/utils/supabase/server'
+import { formatDateRange } from '@/utils/date-formatter'
 
 export interface TripDateItem {
   date_id: string
   date_itself: string | null
   event: string | null
+  formatted_date?: string
 }
 
 export interface UserMemberTrip {
@@ -32,6 +34,10 @@ type RawTripData = {
   state?: string | null
   created_at?: string | null
   organizer_id?: string | null
+  locked_start_date?: string | null
+  locked_end_date?: string | null
+  trip_date_windows?: Array<{ id?: string; start_date: string; end_date: string }> | null
+  trip_itinerary_days?: Array<{ id?: string; day: string }> | null
   trip_dates?: TripDateItem[]
 }
 
@@ -42,6 +48,87 @@ function sortTripDates(dates?: TripDateItem[]): TripDateItem[] {
     const timeB = b.date_itself ? new Date(b.date_itself).getTime() : 0
     return timeA - timeB
   })
+}
+
+function getItineraryRange(days: Array<{ day: string }>): {
+  minDay: string | null
+  maxDay: string | null
+} {
+  if (days.length === 0) return { minDay: null, maxDay: null }
+  const sortedDays = days.map((d) => d.day).filter(Boolean).sort()
+  if (sortedDays.length === 0) return { minDay: null, maxDay: null }
+  return {
+    minDay: sortedDays[0],
+    maxDay: sortedDays[sortedDays.length - 1],
+  }
+}
+
+function resolveLockedDates(rawTrip: RawTripData): TripDateItem[] {
+  const itineraryDays = Array.isArray(rawTrip.trip_itinerary_days)
+    ? rawTrip.trip_itinerary_days
+    : []
+  const { minDay: itinMin, maxDay: itinMax } = getItineraryRange(itineraryDays)
+
+  const minDay = rawTrip.locked_start_date || itinMin
+  const maxDay = rawTrip.locked_end_date || itinMax
+
+  if (!minDay || !maxDay) {
+    return []
+  }
+
+  return [
+    {
+      date_id: `locked-${rawTrip.id}`,
+      date_itself: minDay,
+      event: 'Official trip dates',
+      formatted_date: formatDateRange(minDay, maxDay),
+    },
+  ]
+}
+
+function resolveWindowDates(rawTrip: RawTripData): TripDateItem[] {
+  const windows = Array.isArray(rawTrip.trip_date_windows)
+    ? rawTrip.trip_date_windows
+    : []
+  if (windows.length === 0) {
+    return []
+  }
+
+  const sortedWindows = [...windows].sort((a, b) =>
+    (a.start_date || '').localeCompare(b.start_date || '')
+  )
+
+  return sortedWindows.map((win, idx) => ({
+    date_id: win.id || `window-${rawTrip.id}-${idx}`,
+    date_itself: win.start_date,
+    event: 'Proposed dates',
+    formatted_date: formatDateRange(win.start_date, win.end_date),
+  }))
+}
+
+function isTripLocked(rawTrip: RawTripData): boolean {
+  if (rawTrip.state === 'Dates locked') return true
+  if (Boolean(rawTrip.locked_start_date)) return true
+  const itineraryDays = Array.isArray(rawTrip.trip_itinerary_days)
+    ? rawTrip.trip_itinerary_days
+    : []
+  return itineraryDays.length > 0
+}
+
+function resolveTripDates(rawTrip: RawTripData): TripDateItem[] {
+  if (isTripLocked(rawTrip)) {
+    const lockedDates = resolveLockedDates(rawTrip)
+    if (lockedDates.length > 0) return lockedDates
+  }
+
+  const windowDates = resolveWindowDates(rawTrip)
+  if (windowDates.length > 0) { return windowDates }
+
+  if (Array.isArray(rawTrip.trip_dates) && rawTrip.trip_dates.length > 0) {
+    return sortTripDates(rawTrip.trip_dates)
+  }
+
+  return []
 }
 
 function extractRawTrip(tripsData: unknown): RawTripData | null {
@@ -71,7 +158,7 @@ function mapMemberRowsToTrips(memberRows: Array<{ trips: unknown }>): UserMember
       state: rawTrip.state ?? null,
       created_at: rawTrip.created_at ?? null,
       organizer_id: rawTrip.organizer_id ?? null,
-      trip_dates: sortTripDates(rawTrip.trip_dates),
+      trip_dates: resolveTripDates(rawTrip),
     })
   }
 
@@ -79,9 +166,8 @@ function mapMemberRowsToTrips(memberRows: Array<{ trips: unknown }>): UserMember
 }
 
 /**
- * @brief Fetches all trips where the current user is associated as a member in `trip_memebers`.
- * Resolves user -> trip_memebers.user_id -> trips -> trip_dates.
- * Dates are sorted chronologically.
+ * @brief Fetches all trips where the current user is associated as a member in `trip_members`.
+ * Resolves user -> trip_members.user_id -> trips -> (trip_date_windows / trip_itinerary_days).
  */
 export async function getUserMemberTrips(): Promise<UserMemberTrip[]> {
   try {
@@ -113,10 +199,16 @@ export async function getUserMemberTrips(): Promise<UserMemberTrip[]> {
           state,
           created_at,
           organizer_id,
-          trip_dates (
-            date_id,
-            date_itself,
-            event
+          locked_start_date,
+          locked_end_date,
+          trip_date_windows (
+            id,
+            start_date,
+            end_date
+          ),
+          trip_itinerary_days (
+            id,
+            day
           )
         )
       `)
@@ -127,9 +219,7 @@ export async function getUserMemberTrips(): Promise<UserMemberTrip[]> {
       return []
     }
 
-    if (!memberRows) {
-      return []
-    }
+    if (!memberRows) { return [] }
 
     return mapMemberRowsToTrips(memberRows)
   } catch (error) {

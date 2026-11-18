@@ -58,7 +58,7 @@ function TripExpandedDetails({ trip }: TripExpandedDetailsProps) {
             {dates.map((item) => (
               <li key={item.date_id} className="space-y-0.5">
                 <div className="font-medium text-sky-300">
-                  {formatEventDate(item.date_itself)}
+                  {item.formatted_date || formatEventDate(item.date_itself)}
                 </div>
                 <div className="text-slate-200">
                   {item.event ? item.event : 'No description'}
@@ -72,6 +72,11 @@ function TripExpandedDetails({ trip }: TripExpandedDetailsProps) {
       </div>
     </div>
   )
+}
+
+function getTripDateLabel(dates: TripDateItem[]): string {
+  if (dates.length === 0) return 'Dates not set'
+  return dates[0].formatted_date || formatEventDate(dates[0].date_itself)
 }
 
 interface TripItemCardProps {
@@ -88,8 +93,7 @@ function TripItemCard({
   onNavigate,
 }: TripItemCardProps) {
   const dates = trip.trip_dates ?? []
-  const dateLabel =
-    dates.length > 0 ? formatEventDate(dates[0].date_itself) : 'Dates not set'
+  const dateLabel = getTripDateLabel(dates)
   const stateLabel = trip.state ? trip.state : 'Planning'
 
   return (
@@ -243,6 +247,9 @@ export function TripsCard({ isOpen, onClose, initialTrips }: TripsCardProps) {
   }
 
   if (!isOpen) return null
+
+  console.log("niggers niggers niggers")
+  console.log(trips)
 
   return (
     <section

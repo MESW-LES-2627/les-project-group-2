@@ -32,6 +32,8 @@ type TripData = {
     description: string | null
     organizer_id: string
     invite_code: string
+    locked_start_date?: string | null
+    locked_end_date?: string | null
 }
 
 const sections = [
@@ -440,6 +442,7 @@ async function loadWorkspaceData(
           trip: TripData
           members: TripMember[]
           dateWindows: DateWindow[]
+          itineraryDays: Array<{ day: string }>
           availabilityRows: AvailabilityRow[]
       }
 > {
@@ -479,6 +482,17 @@ async function loadWorkspaceData(
         return { errorView: <WorkspaceErrorView title="Could not load candidate dates" message={dateWindowsError.message} /> }
     }
 
+    const { data: itineraryDays, error: itineraryDaysError } = await supabase
+        .from('trip_itinerary_days')
+        .select('day')
+        .eq('trip_id', tripId)
+        .order('day', { ascending: true })
+
+    if (itineraryDaysError) {
+        console.error('Error fetching itinerary days:', itineraryDaysError)
+        return { errorView: <WorkspaceErrorView title="Could not load trip dates" message={itineraryDaysError.message} /> }
+    }
+
     const { rows: availabilityRows, error: availabilityError } = await fetchAvailabilityRows(supabase, tripId)
 
     if (availabilityError) {
@@ -490,8 +504,94 @@ async function loadWorkspaceData(
         trip: trip as TripData,
         members: (members ?? []) as TripMember[],
         dateWindows: (dateWindows ?? []) as DateWindow[],
+        itineraryDays: (itineraryDays ?? []) as Array<{ day: string }>,
         availabilityRows,
     }
+}
+
+interface TripWorkspaceBodyProps {
+    tripId: string
+    trip: TripData
+    tripMembers: TripMember[]
+    dateWindows: DateWindow[]
+    itineraryDays: Array<{ day: string }>
+    availabilityRows: AvailabilityRow[]
+    currentUserId: string
+}
+
+function TripWorkspaceBody({
+    tripId,
+    trip,
+    tripMembers,
+    dateWindows,
+    itineraryDays,
+    availabilityRows,
+    currentUserId,
+}: TripWorkspaceBodyProps) {
+    const isOrganizer = trip.organizer_id === currentUserId
+    const calendar = buildAvailabilityCalendar(
+        dateWindows,
+        availabilityRows,
+        tripMembers
+    )
+    const myAnswers = Object.fromEntries(
+        availabilityRows
+            .filter((row) => row.user_id === currentUserId)
+            .map((row) => [row.day, row.status])
+    )
+    const isLocked = Boolean(trip.locked_start_date)
+
+    return (
+        <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8">
+            <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 text-sm text-gray-500 transition hover:text-blue-700"
+            >
+                <span>←</span>
+                Back to my trips
+            </Link>
+
+            <TripHeader trip={trip} isOrganizer={isOrganizer} />
+
+            <TripMembersSection
+                tripMembers={tripMembers}
+                isOrganizer={isOrganizer}
+                currentUserId={currentUserId}
+                tripId={tripId}
+            />
+
+            <LockDates
+                tripId={tripId}
+                isOrganizer={isOrganizer}
+                windows={dateWindows}
+                lockedStart={trip.locked_start_date || null}
+                lockedEnd={trip.locked_end_date || null}
+                itineraryDayCount={itineraryDays.length}
+            />
+
+            <DateWindows
+                tripId={tripId}
+                windows={dateWindows}
+                isOrganizer={isOrganizer}
+                locked={isLocked}
+            />
+
+            {calendar.days.length > 0 && (
+                <AvailabilityCalendar
+                    tripId={tripId}
+                    days={calendar.days}
+                    missing={calendar.missing}
+                    memberCount={tripMembers.length}
+                    myAnswers={myAnswers}
+                    locked={isLocked}
+                />
+            )}
+
+            <TripSectionsList tripId={tripId} />
+
+            <TripDangerZone tripId={tripId} isOrganizer={isOrganizer} />
+        </div>
+    )
 }
 
 async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
@@ -509,195 +609,20 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
         redirect('/entry')
     }
 
-    const trip = await loadWorkspaceData(supabase, id)
-    if ('errorView' in trip) { return trip.errorView }
-
-    if (!trip) {
-        return (
-            <main className="min-h-screen bg-gray-50 px-6 py-12">
-                <div className="mx-auto max-w-5xl">
-                    <h1 className="text-2xl font-semibold text-gray-900">
-                        Trip not found
-                    </h1>
-                    <p className="mt-2 text-gray-500">
-                        This trip does not exist or you don&apos;t have permission
-                        to access it.
-                    </p>
-                    <Link
-                        href="/dashboard"
-                        className="mt-5 inline-block text-blue-700 hover:underline"
-                    >
-                        ← Back to dashboard
-                    </Link>
-                </div>
-            </main>
-        )
-    }
-
-    const {data: members, error: membersError} = await supabase.rpc(
-        'get_trip_members',
-        {p_trip_id: id}
-    )
-
-    if (membersError) {
-        console.error('Error fetching trip members:', membersError)
-
-        return (
-            <main className="min-h-screen bg-gray-50 px-6 py-12">
-                <div className="mx-auto max-w-5xl">
-                    <h1 className="text-2xl font-semibold text-gray-900">
-                        Could not load trip members
-                    </h1>
-                    <p className="mt-2 text-gray-500">{membersError.message}</p>
-                </div>
-            </main>
-        )
-    }
-
-    const {data: dateWindows, error: dateWindowsError} = await supabase
-        .from('trip_date_windows')
-        .select('id, trip_id, start_date, end_date')
-        .eq('trip_id', id)
-        .order('start_date', {ascending: true})
-
-    if (dateWindowsError) {
-        console.error('Error fetching date windows:', dateWindowsError)
-
-        return (
-            <main className="min-h-screen bg-gray-50 px-6 py-12">
-                <div className="mx-auto max-w-5xl">
-                    <h1 className="text-2xl font-semibold text-gray-900">
-                        Could not load candidate dates
-                    </h1>
-                    <p className="mt-2 text-gray-500">{dateWindowsError.message}</p>
-                </div>
-            </main>
-        )
-    }
-
-    const {data: itineraryDays, error: itineraryDaysError} = await supabase
-        .from('trip_itinerary_days')
-        .select('day')
-        .eq('trip_id', id)
-        .order('day', {ascending: true})
-
-    if (itineraryDaysError) {
-        console.error('Error fetching itinerary days:', itineraryDaysError)
-
-        return (
-            <main className="min-h-screen bg-gray-50 px-6 py-12">
-                <div className="mx-auto max-w-5xl">
-                    <h1 className="text-2xl font-semibold text-gray-900">
-                        Could not load trip dates
-                    </h1>
-                    <p className="mt-2 text-gray-500">{itineraryDaysError.message}</p>
-                </div>
-            </main>
-        )
-    }
-
-    const availabilityRows: AvailabilityRow[] = []
-    const pageSize = 1000
-    let availabilityError: {message: string} | null = null
-
-    // Supabase caps each response; fetch every page before computing overlaps.
-    for (let from = 0; ; from += pageSize) {
-        const {data, error} = await supabase
-            .from('trip_availability')
-            .select('user_id, day, status')
-            .eq('trip_id', id)
-            .order('day', {ascending: true})
-            .order('user_id', {ascending: true})
-            .range(from, from + pageSize - 1)
-
-        if (error) {
-            availabilityError = error
-            break
-        }
-
-        availabilityRows.push(...(data ?? []))
-        if ((data?.length ?? 0) < pageSize) break
-    }
-
-    if (availabilityError) {
-        console.error('Error fetching availability:', availabilityError)
-
-        return (
-            <main className="min-h-screen bg-gray-50 px-6 py-12">
-                <div className="mx-auto max-w-5xl">
-                    <h1 className="text-2xl font-semibold text-gray-900">
-                        Could not load availability
-                    </h1>
-                    <p className="mt-2 text-gray-500">{availabilityError.message}</p>
-                </div>
-            </main>
-        )
-    }
-
-    const tripMembers = (members ?? []) as TripMember[]
-    const isOrganizer = trip.organizer_id === user.id
-    const calendar = buildAvailabilityCalendar(
-        dateWindows,
-        availabilityRows,
-        tripMembers
-    )
-    const myAnswers = Object.fromEntries(
-        availabilityRows
-            .filter((row) => row.user_id === user.id)
-            .map((row) => [row.day, row.status])
-    )
+    const load = await loadWorkspaceData(supabase, id)
+    if ('errorView' in load) { return load.errorView }
 
     return (
         <main className="min-h-screen bg-gray-50">
-            <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8">
-                <Link
-                    href="/dashboard"
-                    className="inline-flex items-center gap-2 text-sm text-gray-500 transition hover:text-blue-700"
-                >
-                    <span>←</span>
-                    Back to my trips
-                </Link>
-
-                <TripHeader trip={trip} isOrganizer={isOrganizer} />
-
-                <TripMembersSection
-                    tripMembers={tripMembers}
-                    isOrganizer={isOrganizer}
-                    currentUserId={user.id}
-                    tripId={id}
-                />
-
-                <LockDates
-                    tripId={id}
-                    isOrganizer={isOrganizer}
-                    windows={(dateWindows ?? []) as DateWindow[]}
-                    lockedStart={trip.locked_start_date ?? null}
-                    lockedEnd={trip.locked_end_date ?? null}
-                    itineraryDayCount={itineraryDays?.length ?? 0}
-                />
-
-                <DateWindows
-                    tripId={id}
-                    windows={dateWindows}
-                    isOrganizer={isOrganizer}
-                    locked={Boolean(trip.locked_start_date)}
-                />
-
-                {calendar.days.length > 0 && (
-                    <AvailabilityCalendar
-                        tripId={id}
-                        days={calendar.days}
-                        missing={calendar.missing}
-                        memberCount={tripMembers.length}
-                        myAnswers={myAnswers}
-                        locked={Boolean(trip.locked_start_date)}
-                    />
-                )}
-
-                <TripSectionsList tripId={id} />
-
-                <TripDangerZone tripId={id} isOrganizer={isOrganizer} />
-            </div>
+            <TripWorkspaceBody
+                tripId={id}
+                trip={load.trip}
+                tripMembers={load.members}
+                dateWindows={load.dateWindows}
+                itineraryDays={load.itineraryDays}
+                availabilityRows={load.availabilityRows}
+                currentUserId={user.id}
+            />
         </main>
     )
 }

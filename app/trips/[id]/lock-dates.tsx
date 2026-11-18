@@ -36,6 +36,93 @@ function formatDate(value: string): string {
   })
 }
 
+interface LockedDatesViewProps {
+  lockedStart: string
+  lockedEnd: string
+  itineraryDayCount: number
+  isOrganizer: boolean
+  isPending: boolean
+  onUnlock: () => void
+}
+
+function LockedDatesView({
+  lockedStart,
+  lockedEnd,
+  itineraryDayCount,
+  isOrganizer,
+  isPending,
+  onUnlock,
+}: LockedDatesViewProps) {
+  const dayLabel = itineraryDayCount === 1 ? 'day' : 'days'
+  return (
+    <div className="mt-4">
+      <p className="text-lg font-semibold text-gray-900">
+        {formatDate(lockedStart)} → {formatDate(lockedEnd)}
+      </p>
+      <p className="mt-1 text-sm text-gray-500">
+        {itineraryDayCount} itinerary {dayLabel} created. Availability and candidate dates are read-only.
+      </p>
+      {isOrganizer && (
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={onUnlock}
+          className="mt-5 rounded-full border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-red-200 hover:text-red-700 disabled:opacity-50"
+        >
+          {isPending ? 'Unlocking…' : 'Unlock dates'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+interface UnlockedDatesViewProps {
+  isOrganizer: boolean
+  isPending: boolean
+  onLock: (event: React.FormEvent<HTMLFormElement>) => void
+}
+
+function UnlockedDatesView({
+  isOrganizer,
+  isPending,
+  onLock,
+}: UnlockedDatesViewProps) {
+  const description = isOrganizer
+    ? 'Once the group has answered, lock the final dates to start planning the itinerary.'
+    : 'The organizer has not locked the trip dates yet.'
+
+  return (
+    <div className="mt-2">
+      <p className="text-sm text-gray-500">{description}</p>
+      {isOrganizer && (
+        <form noValidate onSubmit={onLock} className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="lock-start" className="mb-2 block text-sm font-medium text-gray-700">
+              Trip start
+            </label>
+            <input id="lock-start" name="startDate" type="date" className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="lock-end" className="mb-2 block text-sm font-medium text-gray-700">
+              Trip end
+            </label>
+            <input id="lock-end" name="endDate" type="date" className={inputClass} />
+          </div>
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              disabled={isPending}
+              className="rounded-full bg-blue-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:opacity-50"
+            >
+              {isPending ? 'Locking…' : 'Lock dates'}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  )
+}
+
 /**
  * @brief Shows the official dates of the trip and lets the organizer lock or unlock them.
  * @param props Component properties with the lock state, the candidate windows and the viewer's role.
@@ -117,64 +204,21 @@ export function LockDates({
         </p>
       )}
 
-      {isLocked ? (
-        <div className="mt-4">
-          <p className="text-lg font-semibold text-gray-900">
-            {formatDate(lockedStart)} → {formatDate(lockedEnd)}
-          </p>
-          <p className="mt-1 text-sm text-gray-500">
-            {itineraryDayCount} itinerary {itineraryDayCount === 1 ? 'day' : 'days'} created.
-            Availability and candidate dates are read-only.
-          </p>
-          {isOrganizer && (
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={handleUnlock}
-              className="mt-5 rounded-full border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-red-200 hover:text-red-700 disabled:opacity-50"
-            >
-              {isPending ? 'Unlocking…' : 'Unlock dates'}
-            </button>
-          )}
-        </div>
+      {isLocked && lockedStart && lockedEnd ? (
+        <LockedDatesView
+          lockedStart={lockedStart}
+          lockedEnd={lockedEnd}
+          itineraryDayCount={itineraryDayCount}
+          isOrganizer={isOrganizer}
+          isPending={isPending}
+          onUnlock={handleUnlock}
+        />
       ) : (
-        <div className="mt-2">
-          <p className="text-sm text-gray-500">
-            {isOrganizer
-              ? 'Once the group has answered, lock the final dates to start planning the itinerary.'
-              : 'The organizer has not locked the trip dates yet.'}
-          </p>
-
-          {isOrganizer && (
-            <form
-              noValidate
-              onSubmit={handleLock}
-              className="mt-5 grid gap-4 sm:grid-cols-2"
-            >
-              <div>
-                <label htmlFor="lock-start" className="mb-2 block text-sm font-medium text-gray-700">
-                  Trip start
-                </label>
-                <input id="lock-start" name="startDate" type="date" className={inputClass} />
-              </div>
-              <div>
-                <label htmlFor="lock-end" className="mb-2 block text-sm font-medium text-gray-700">
-                  Trip end
-                </label>
-                <input id="lock-end" name="endDate" type="date" className={inputClass} />
-              </div>
-              <div className="sm:col-span-2">
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="rounded-full bg-blue-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:opacity-50"
-                >
-                  {isPending ? 'Locking…' : 'Lock dates'}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+        <UnlockedDatesView
+          isOrganizer={isOrganizer}
+          isPending={isPending}
+          onLock={handleLock}
+        />
       )}
     </section>
   )

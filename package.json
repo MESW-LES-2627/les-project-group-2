@@ -16,7 +16,8 @@
     "db:reset": "supabase db reset",
     "db:new": "supabase migration new", 
     "db:update": "supabase migration up --local", 
-    "db:compare": "supabase db diff -f " 
+    "db:compare": "supabase db diff -f ",
+    "reset": "supabase db reset && next dev"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
