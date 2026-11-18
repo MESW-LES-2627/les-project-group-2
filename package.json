@@ -14,6 +14,11 @@
     "db:stop": "supabase stop",
     "db:status": "supabase status",
     "db:reset": "supabase db reset"
+    "db:new": "supabase migration new", // Creates a migration assuming -- {name of migration}
+    "db:update": "supabase migration up --local", // Updates the local database
+    "db:compare": "supabase db diff -f " // Creates a migration based on the differences between the local database and it's studio version 
+    // WARNING : haven't tried the upper thingy, but claude says he isn't the brightest of folks 
+    // He might get somethings wrong... (and, of course, it waits for the -- {name of new migration} paramater)
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
