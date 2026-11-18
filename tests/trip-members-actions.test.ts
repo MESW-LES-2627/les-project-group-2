@@ -1,5 +1,5 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest'
-import {leaveTrip, removeTripMember} from '@/app/trips/actions/manage-trip-members'
+import {leaveTrip, promoteToOrganizer, removeTripMember} from '@/app/trips/actions/manage-trip-members'
 import * as navigation from 'next/navigation'
 import * as supabaseServer from '@/utils/supabase/server'
 import * as nextCache from 'next/cache'
@@ -18,6 +18,7 @@ vi.mock('@/utils/supabase/server', () => ({
 
 type MockQuery = {
     delete: ReturnType<typeof vi.fn>
+    update: ReturnType<typeof vi.fn>
     eq: ReturnType<typeof vi.fn>
     maybeSingle: ReturnType<typeof vi.fn>
     select: ReturnType<typeof vi.fn>
@@ -28,12 +29,14 @@ describe('Trip member actions', () => {
     let membershipQuery: MockQuery
     let getUser: ReturnType<typeof vi.fn>
     let from: ReturnType<typeof vi.fn>
+    let rpc: ReturnType<typeof vi.fn>
 
     beforeEach(() => {
         vi.clearAllMocks()
 
         tripQuery = {
             delete: vi.fn(),
+            update: vi.fn(),
             eq: vi.fn(),
             maybeSingle: vi.fn().mockResolvedValue({
                 data: {organizer_id: 'user-1'},
@@ -43,6 +46,7 @@ describe('Trip member actions', () => {
         }
         membershipQuery = {
             delete: vi.fn(),
+            update: vi.fn(),
             eq: vi.fn(),
             maybeSingle: vi.fn(),
             select: vi.fn(),
@@ -50,6 +54,7 @@ describe('Trip member actions', () => {
 
         for (const query of [tripQuery, membershipQuery]) {
             query.delete.mockReturnValue(query)
+            query.update.mockReturnValue(query)
             query.eq.mockReturnValue(query)
             query.select.mockReturnValue(query)
         }
@@ -66,10 +71,12 @@ describe('Trip member actions', () => {
         from = vi.fn((table: string) =>
             table === 'trips' ? tripQuery : membershipQuery
         )
+        rpc = vi.fn().mockResolvedValue({error: null})
 
         vi.mocked(supabaseServer.createClient).mockResolvedValue({
             auth: {getUser},
             from,
+            rpc,
         } as never)
         vi.mocked(navigation.redirect).mockImplementation(() => {
             throw new Error('NEXT_REDIRECT')
@@ -166,5 +173,112 @@ describe('Trip member actions', () => {
         await expect(leaveTrip(new FormData())).rejects.toThrow('tripId is required.')
 
         expect(supabaseServer.createClient).not.toHaveBeenCalled()
+    })
+
+    describe('promoteToOrganizer', () => {
+        it('allows the organizer to promote another member to organizer using rpc', async () => {
+            membershipQuery.maybeSingle.mockResolvedValueOnce({
+                data: {role: 'member'},
+                error: null,
+            })
+
+            const result = await promoteToOrganizer('trip-1', 'member-2')
+
+            expect(result).toEqual({success: true})
+            expect(rpc).toHaveBeenCalledWith('promote_to_organizer', {
+                p_trip_id: 'trip-1',
+                p_new_organizer_id: 'member-2',
+            })
+            expect(nextCache.revalidatePath).toHaveBeenCalledWith('/trips/trip-1')
+            expect(nextCache.revalidatePath).toHaveBeenCalledWith('/dashboard')
+        })
+
+        it('allows promoting via FormData and redirects', async () => {
+            membershipQuery.maybeSingle.mockResolvedValueOnce({
+                data: {role: 'member'},
+                error: null,
+            })
+            const formData = new FormData()
+            formData.set('tripId', 'trip-1')
+            formData.set('memberId', 'member-2')
+
+            await expect(promoteToOrganizer(formData)).rejects.toThrow('NEXT_REDIRECT')
+
+            expect(rpc).toHaveBeenCalledWith('promote_to_organizer', {
+                p_trip_id: 'trip-1',
+                p_new_organizer_id: 'member-2',
+            })
+            expect(nextCache.revalidatePath).toHaveBeenCalledWith('/trips/trip-1')
+            expect(navigation.redirect).toHaveBeenCalledWith('/trips/trip-1')
+        })
+
+        it('falls back to table updates when rpc is not a function', async () => {
+            vi.mocked(supabaseServer.createClient).mockResolvedValueOnce({
+                auth: {getUser},
+                from,
+            } as never)
+            membershipQuery.maybeSingle.mockResolvedValueOnce({
+                data: {role: 'member'},
+                error: null,
+            })
+
+            const result = await promoteToOrganizer('trip-1', 'member-2')
+
+            expect(result).toEqual({success: true})
+            expect(membershipQuery.update).toHaveBeenCalledWith({role: 'member'})
+            expect(membershipQuery.update).toHaveBeenCalledWith({role: 'organizer'})
+            expect(tripQuery.update).toHaveBeenCalledWith({organizer_id: 'member-2'})
+            expect(nextCache.revalidatePath).toHaveBeenCalledWith('/trips/trip-1')
+        })
+
+        it('does not let a non-organizer promote a member', async () => {
+            tripQuery.maybeSingle.mockResolvedValueOnce({
+                data: {organizer_id: 'other-user'},
+                error: null,
+            })
+
+            await expect(promoteToOrganizer('trip-1', 'member-2')).rejects.toThrow(
+                'Only the trip organizer can promote members.'
+            )
+            expect(rpc).not.toHaveBeenCalled()
+        })
+
+        it('does not let the organizer promote themselves', async () => {
+            await expect(promoteToOrganizer('trip-1', 'user-1')).rejects.toThrow(
+                'The organizer cannot promote themselves.'
+            )
+            expect(rpc).not.toHaveBeenCalled()
+        })
+
+        it('rejects promoting a non-existent member or member with wrong role', async () => {
+            membershipQuery.maybeSingle.mockResolvedValueOnce({
+                data: null,
+                error: null,
+            })
+
+            await expect(promoteToOrganizer('trip-1', 'unknown-user')).rejects.toThrow(
+                'Trip member not found.'
+            )
+            expect(rpc).not.toHaveBeenCalled()
+        })
+
+        it('handles rpc errors properly', async () => {
+            membershipQuery.maybeSingle.mockResolvedValueOnce({
+                data: {role: 'member'},
+                error: null,
+            })
+            rpc.mockResolvedValueOnce({
+                error: {message: 'Database error occurred'},
+            })
+
+            await expect(promoteToOrganizer('trip-1', 'member-2')).rejects.toThrow(
+                'Could not promote member to organizer: Database error occurred'
+            )
+        })
+
+        it('requires tripId and memberId', async () => {
+            await expect(promoteToOrganizer('', 'member-2')).rejects.toThrow('tripId is required.')
+            await expect(promoteToOrganizer('trip-1', '')).rejects.toThrow('memberId is required.')
+        })
     })
 })

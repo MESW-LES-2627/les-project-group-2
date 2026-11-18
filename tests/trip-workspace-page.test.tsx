@@ -130,7 +130,7 @@ describe('Trip workspace page', () => {
                 {
                     user_id: 'user-1',
                     email: 'organizer@example.com',
-                    display_name: 'Organizer',
+                    display_name: 'Trip organizer',
                     role: 'organizer',
                 },
                 {
@@ -214,6 +214,7 @@ describe('Trip workspace page', () => {
         expect(screen.getByText('Trip Member', {selector: 'p'})).toBeTruthy()
         expect(screen.getByText('member@example.com')).toBeTruthy()
         expect(screen.getByText('organizer')).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Promote to organizer'})).toBeTruthy()
         expect(screen.getByRole('button', {name: 'Remove member'})).toBeTruthy()
         expect(screen.getByRole('link', {name: /map/i}).getAttribute('href')).toBe(
             '/trips/trip-1/map'
@@ -232,11 +233,12 @@ describe('Trip workspace page', () => {
 
         await renderContent()
 
-        expect(screen.getByText('Trip organizer')).toBeTruthy()
+        expect(screen.getAllByText('Trip organizer').length).toBeGreaterThan(0)
         expect(screen.queryByText('Edit trip details')).toBeNull()
         expect(screen.queryByText('Delete this trip')).toBeNull()
         expect(screen.getByRole('button', {name: 'Leave trip'})).toBeTruthy()
         expect(screen.queryByRole('button', {name: 'Remove member'})).toBeNull()
+        expect(screen.queryByRole('button', {name: 'Promote to organizer'})).toBeNull()
     })
 
     it('shows the candidate date windows to every member', async () => {

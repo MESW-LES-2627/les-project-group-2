@@ -11,6 +11,7 @@ import {InviteSettings} from './invite-settings'
 import {DateWindows} from './date-windows'
 import {AvailabilityCalendar} from './availability-calendar'
 import {LockDates} from './lock-dates'
+import {PromoteToOrganizerButton} from './promote-member-button'
 import type {DateWindow} from '@/utils/date-windows'
 import {buildAvailabilityCalendar, type AvailabilityRow} from '@/utils/availability'
 
@@ -25,18 +26,31 @@ type TripMember = {
     role: 'organizer' | 'member'
 }
 
+function getOrganizer(tripMembers: TripMember[]) {
+  for (const men of tripMembers) {
+    if (men.role === 'organizer') return men.display_name
+  }
+  return 'Trip organizer'
+}
+
 const sections = [
+    {
+        title: 'Map',
+        description: 'Discover places and explore destinations.',
+        icon: '🗺️',
+        link: '/dashboard',
+    },
     {
         title: 'Itinerary',
         description: 'Build your plans and organize activities.',
         icon: '🧭',
-        status: 'Coming soon',
+        link: '',
     },
     {
         title: 'Expenses',
         description: 'Keep track of costs and shared expenses.',
         icon: '💳',
-        status: 'Coming soon',
+        link: '  ',
     },
 ]
 
@@ -274,7 +288,7 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                                 Organizer
                             </p>
                             <p className="mt-1 font-semibold text-gray-800">
-                                {isOrganizer ? 'You' : 'Trip organizer'}
+                                {isOrganizer ? 'You' : getOrganizer(tripMembers)}
                             </p>
                         </div>
                     </div>
@@ -408,20 +422,26 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                                     </span>
                                 </div>
                                 {isOrganizer && member.role === 'member' && (
-                                    <form action={removeTripMember}>
-                                        <input type="hidden" name="tripId" value={id}/>
-                                        <input
-                                            type="hidden"
-                                            name="memberId"
-                                            value={member.user_id}
+                                    <div className="flex items-center gap-4">
+                                        <PromoteToOrganizerButton
+                                            tripId={id}
+                                            memberId={member.user_id}
                                         />
-                                        <button
-                                            type="submit"
-                                            className="text-sm font-semibold text-red-700 transition hover:text-red-900"
-                                        >
-                                            Remove member
-                                        </button>
-                                    </form>
+                                        <form action={removeTripMember}>
+                                            <input type="hidden" name="tripId" value={id}/>
+                                            <input
+                                                type="hidden"
+                                                name="memberId"
+                                                value={member.user_id}
+                                            />
+                                            <button
+                                                type="submit"
+                                                className="text-sm font-semibold text-red-700 transition hover:text-red-900"
+                                            >
+                                                Remove member
+                                            </button>
+                                        </form>
+                                    </div>
                                 )}
                             </li>
                         ))}
@@ -475,57 +495,35 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                        {/* Map */}
+                      {sections.map((section) => (
                         <Link
-                            href={`/trips/${id}/map`}
-                            className="group flex items-center gap-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-6 transition hover:-translate-y-1 hover:border-blue-200 hover:bg-blue-50 hover:shadow-md"
+                          key={section.link}
+                          href={section.link}
                         >
-                            <div
-                                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">
-                                🗺️
-                            </div>
+                          <div
+                              key={section.title}
+                              className="flex items-center gap-5 rounded-2xl border border-gray-100 bg-white p-6 transition hover:-translate-y-1 hover:border-gray-200 hover:shadow-md"
+                          >
+                              <div
+                                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gray-50 text-2xl"
+                              >
+                                  {section.icon}
+                              </div>
 
-                            <div className="min-w-0 flex-1">
-                                <h3 className="font-semibold text-gray-900">
-                                    Map
-                                </h3>
-                                <p className="mt-1 text-sm text-gray-500">
-                                    Discover places and explore destinations.
-                                </p>
-                            </div>
+                              <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                      <h3 className="font-semibold text-gray-900">
+                                          {section.title}
+                                      </h3>
+                                  </div>
 
-                            <span className="text-xl text-blue-600 transition group-hover:translate-x-1">
-                                →
-                            </span>
+                                  <p className="mt-1 text-sm leading-relaxed text-gray-500">
+                                      {section.description}
+                                  </p>
+                              </div>
+                          </div>
                         </Link>
-
-                        {sections.map((section) => (
-                            <div
-                                key={section.title}
-                                className="flex items-center gap-5 rounded-2xl border border-gray-100 bg-white p-6 transition hover:-translate-y-1 hover:border-gray-200 hover:shadow-md"
-                            >
-                                <div
-                                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gray-50 text-2xl">
-                                    {section.icon}
-                                </div>
-
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <h3 className="font-semibold text-gray-900">
-                                            {section.title}
-                                        </h3>
-                                        <span
-                                            className="rounded-full bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-500">
-                                            {section.status}
-                                        </span>
-                                    </div>
-
-                                    <p className="mt-1 text-sm leading-relaxed text-gray-500">
-                                        {section.description}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
+                      ))}
                     </div>
                 </section>
 
