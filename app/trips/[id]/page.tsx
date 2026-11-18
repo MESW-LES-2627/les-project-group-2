@@ -10,6 +10,7 @@ import {leaveTrip, removeTripMember} from '../actions/manage-trip-members'
 import {InviteSettings} from './invite-settings'
 import {DateWindows} from './date-windows'
 import {AvailabilityCalendar} from './availability-calendar'
+import {LockDates} from './lock-dates'
 import type {DateWindow} from '@/utils/date-windows'
 import {buildAvailabilityCalendar, type AvailabilityRow} from '@/utils/availability'
 
@@ -508,12 +509,132 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
         redirect('/entry')
     }
 
-    const loaded = await loadWorkspaceData(supabase, id)
-    if ('errorView' in loaded) {
-        return loaded.errorView
+    const trip = await loadWorkspaceData(supabase, id)
+    if ('errorView' in trip) { return trip.errorView }
+
+    if (!trip) {
+        return (
+            <main className="min-h-screen bg-gray-50 px-6 py-12">
+                <div className="mx-auto max-w-5xl">
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        Trip not found
+                    </h1>
+                    <p className="mt-2 text-gray-500">
+                        This trip does not exist or you don&apos;t have permission
+                        to access it.
+                    </p>
+                    <Link
+                        href="/dashboard"
+                        className="mt-5 inline-block text-blue-700 hover:underline"
+                    >
+                        ← Back to dashboard
+                    </Link>
+                </div>
+            </main>
+        )
     }
 
-    const { trip, members: tripMembers, dateWindows, availabilityRows } = loaded
+    const {data: members, error: membersError} = await supabase.rpc(
+        'get_trip_members',
+        {p_trip_id: id}
+    )
+
+    if (membersError) {
+        console.error('Error fetching trip members:', membersError)
+
+        return (
+            <main className="min-h-screen bg-gray-50 px-6 py-12">
+                <div className="mx-auto max-w-5xl">
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        Could not load trip members
+                    </h1>
+                    <p className="mt-2 text-gray-500">{membersError.message}</p>
+                </div>
+            </main>
+        )
+    }
+
+    const {data: dateWindows, error: dateWindowsError} = await supabase
+        .from('trip_date_windows')
+        .select('id, trip_id, start_date, end_date')
+        .eq('trip_id', id)
+        .order('start_date', {ascending: true})
+
+    if (dateWindowsError) {
+        console.error('Error fetching date windows:', dateWindowsError)
+
+        return (
+            <main className="min-h-screen bg-gray-50 px-6 py-12">
+                <div className="mx-auto max-w-5xl">
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        Could not load candidate dates
+                    </h1>
+                    <p className="mt-2 text-gray-500">{dateWindowsError.message}</p>
+                </div>
+            </main>
+        )
+    }
+
+    const {data: itineraryDays, error: itineraryDaysError} = await supabase
+        .from('trip_itinerary_days')
+        .select('day')
+        .eq('trip_id', id)
+        .order('day', {ascending: true})
+
+    if (itineraryDaysError) {
+        console.error('Error fetching itinerary days:', itineraryDaysError)
+
+        return (
+            <main className="min-h-screen bg-gray-50 px-6 py-12">
+                <div className="mx-auto max-w-5xl">
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        Could not load trip dates
+                    </h1>
+                    <p className="mt-2 text-gray-500">{itineraryDaysError.message}</p>
+                </div>
+            </main>
+        )
+    }
+
+    const availabilityRows: AvailabilityRow[] = []
+    const pageSize = 1000
+    let availabilityError: {message: string} | null = null
+
+    // Supabase caps each response; fetch every page before computing overlaps.
+    for (let from = 0; ; from += pageSize) {
+        const {data, error} = await supabase
+            .from('trip_availability')
+            .select('user_id, day, status')
+            .eq('trip_id', id)
+            .order('day', {ascending: true})
+            .order('user_id', {ascending: true})
+            .range(from, from + pageSize - 1)
+
+        if (error) {
+            availabilityError = error
+            break
+        }
+
+        availabilityRows.push(...(data ?? []))
+        if ((data?.length ?? 0) < pageSize) break
+    }
+
+    if (availabilityError) {
+        console.error('Error fetching availability:', availabilityError)
+
+        return (
+            <main className="min-h-screen bg-gray-50 px-6 py-12">
+                <div className="mx-auto max-w-5xl">
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        Could not load availability
+                    </h1>
+                    <p className="mt-2 text-gray-500">{availabilityError.message}</p>
+                </div>
+            </main>
+        )
+    }
+
+    const tripMembers = (members ?? []) as TripMember[]
     const isOrganizer = trip.organizer_id === user.id
     const calendar = buildAvailabilityCalendar(
         dateWindows,
@@ -546,10 +667,20 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                     tripId={id}
                 />
 
+                <LockDates
+                    tripId={id}
+                    isOrganizer={isOrganizer}
+                    windows={(dateWindows ?? []) as DateWindow[]}
+                    lockedStart={trip.locked_start_date ?? null}
+                    lockedEnd={trip.locked_end_date ?? null}
+                    itineraryDayCount={itineraryDays?.length ?? 0}
+                />
+
                 <DateWindows
                     tripId={id}
                     windows={dateWindows}
                     isOrganizer={isOrganizer}
+                    locked={Boolean(trip.locked_start_date)}
                 />
 
                 {calendar.days.length > 0 && (
@@ -559,6 +690,7 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                         missing={calendar.missing}
                         memberCount={tripMembers.length}
                         myAnswers={myAnswers}
+                        locked={Boolean(trip.locked_start_date)}
                     />
                 )}
 
