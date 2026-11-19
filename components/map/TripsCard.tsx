@@ -59,8 +59,7 @@ export function TripsCard({ isOpen, onClose, initialTrips }: TripsCardProps) {
         }
       })
 
-    return () => {
-      ignore = true
+    return () => { ignore = true
     }
   }, [isOpen, initialTrips])
 

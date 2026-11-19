@@ -179,6 +179,14 @@ export function TripMapContainer({
     setSelectedPin(updatedPin)
   }, [])
 
+  /**
+   * @brief Handles deleting a pin by an organizer, removing it from the map.
+   */
+  const handleDeletePin = useCallback((pinId: string) => {
+    setPins((prev) => prev.filter((p) => p.id !== pinId))
+    setSelectedPin(null)
+  }, [])
+
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-950">
       {mode === 'itinerary' ? (
@@ -332,6 +340,7 @@ export function TripMapContainer({
           isOrganizer={isOrganizer}
           tripId={tripId}
           onVoteChange={handleVoteChange}
+          onDeletePin={handleDeletePin}
           onClose={() => setSelectedPin(null)}
         />
       )}

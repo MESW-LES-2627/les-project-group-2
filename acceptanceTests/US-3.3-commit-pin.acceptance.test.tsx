@@ -18,6 +18,8 @@ vi.mock('@/app/trips/actions/pins', () => ({
   createPinAction: vi.fn(),
   toggleCommitPinAction: vi.fn(),
   getPinsAction: vi.fn(),
+  deletePinAction: vi.fn(),
+  removePinAction: vi.fn(),
 }))
 
 interface MockMapProps {
@@ -272,5 +274,77 @@ describe('US-3.3 Acceptance Tests: Committing Pins to Itinerary', () => {
     // No pins should be added
     expect(screen.queryByTestId('pin-vote-card')).toBeNull()
     expect(pinsActions.createPinAction).not.toHaveBeenCalled()
+  })
+
+  // Requirement: Organizers can remove pins from the map
+  it('Scenario 6: Organizer can remove a pin using "Remover pin" button', async () => {
+    vi.mocked(pinsActions.deletePinAction).mockResolvedValueOnce({ success: true })
+
+    render(
+      <TripMapContainer
+        mode="itinerary"
+        tripId="trip-lisbon-123"
+        tripName="Lisbon Adventure"
+        isOrganizer={true}
+        currentUserEmail="organizer@planit.app"
+        initialPins={sampleTripPins}
+        allowPinCreation={true}
+      />
+    )
+
+    // Marker exists initially
+    expect(screen.getByTestId('marker-pin-tower')).toBeDefined()
+
+    // Click marker
+    fireEvent.click(screen.getByTestId('marker-pin-tower'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pin-vote-card')).toBeDefined()
+    })
+
+    const removeBtn = screen.getByRole('button', { name: /remover pin/i })
+    expect(removeBtn).toBeDefined()
+
+    // Click "Remover pin"
+    fireEvent.click(removeBtn)
+
+    await waitFor(() => {
+      // Pin card is closed
+      expect(screen.queryByTestId('pin-vote-card')).toBeNull()
+      // Marker is removed from map
+      expect(screen.queryByTestId('marker-pin-tower')).toBeNull()
+    })
+
+    expect(pinsActions.deletePinAction).toHaveBeenCalledWith(
+      'trip-lisbon-123',
+      'pin-tower'
+    )
+  })
+
+  // Requirement: Non-organizer members CANNOT remove pins
+  it('Scenario 7: Non-organizers cannot see the "Remover pin" button', async () => {
+    render(
+      <TripMapContainer
+        mode="itinerary"
+        tripId="trip-lisbon-123"
+        tripName="Lisbon Adventure"
+        isOrganizer={false}
+        currentUserEmail="member@planit.app"
+        initialPins={sampleTripPins}
+        allowPinCreation={true}
+      />
+    )
+
+    const marker = screen.getByTestId('marker-pin-tower')
+    fireEvent.click(marker)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pin-vote-card')).toBeDefined()
+    })
+
+    // Remove pin button must not be rendered for non-organizers
+    expect(screen.queryByRole('button', { name: /remover pin/i })).toBeNull()
+    expect(screen.queryByTestId('remove-pin-button')).toBeNull()
+    expect(screen.queryByTestId('delete-pin-button')).toBeNull()
   })
 })

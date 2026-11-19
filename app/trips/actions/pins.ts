@@ -25,6 +25,11 @@ export interface GetPinsResult {
   error?: string
 }
 
+export interface DeletePinResult {
+  success?: boolean
+  error?: string
+}
+
 /**
  * @brief Creates a new proposed pin in the database associated with a trip.
  * @param tripId The ID of the target trip.
@@ -255,3 +260,62 @@ export async function getPinsAction(tripId: string): Promise<GetPinsResult> {
 
   return { pins }
 }
+
+/**
+ * @brief Deletes a pin from the database. Only the trip organizer can perform this.
+ * @param tripId The unique identifier of the trip.
+ * @param pinId The unique identifier of the pin to delete.
+ * @return DeletePinResult containing success indicator or an error message.
+ */
+export async function deletePinAction(
+  tripId: string,
+  pinId: string
+): Promise<DeletePinResult> {
+  if (!tripId || !pinId) {
+    return { error: 'Trip ID and Pin ID are required.' }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return { error: 'Authentication required.' }
+  }
+
+  // Verify that the current user is the trip organizer
+  const { data: trip, error: tripError } = await supabase
+    .from('trips')
+    .select('organizer_id')
+    .eq('id', tripId)
+    .maybeSingle()
+
+  if (tripError) {
+    console.error('Error verifying trip organizer:', tripError)
+    return { error: `Could not verify trip organizer: ${tripError.message}` }
+  }
+
+  if (!trip || trip.organizer_id !== user.id) {
+    return { error: 'Only the trip organizer can delete pins.' }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('pins')
+    .delete()
+    .eq('id', pinId)
+    .eq('trip_id', tripId)
+
+  if (deleteError) {
+    console.error('Error deleting pin:', deleteError)
+    return { error: `Could not delete pin: ${deleteError.message}` }
+  }
+
+  revalidatePath(`/trips/${tripId}/itinerary`)
+  revalidatePath(`/trips/${tripId}/map`)
+  return { success: true }
+}
+
+export const removePinAction = deletePinAction
+

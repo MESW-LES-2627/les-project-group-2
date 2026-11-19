@@ -16,8 +16,10 @@ import {
   isPinCommitted,
 } from '@/types/map'
 import { toggleVoteOnPin } from '@/services/pin-votes'
-import { toggleCommitPinAction } from '@/app/trips/actions/pins'
+import { toggleCommitPinAction, deletePinAction } from '@/app/trips/actions/pins'
 import { togglePinVoteAction } from '@/app/trips/actions/vote-pin'
+import { removePinFromTrip } from '@/services/pin-storage'
+import { Trash2 } from 'lucide-react'
 
 interface PinVoteCardProps {
   pin: Pin
@@ -26,6 +28,7 @@ interface PinVoteCardProps {
   isOrganizer?: boolean
   tripId?: string
   onVoteChange?: (updatedPin: Pin) => void
+  onDeletePin?: (pinId: string) => void
   onClose?: () => void
 }
 
@@ -40,10 +43,12 @@ export function PinVoteCard({
   isOrganizer = false,
   tripId,
   onVoteChange,
+  onDeletePin,
   onClose,
 }: PinVoteCardProps) {
   const [currentPin, setCurrentPin] = useState<Pin>(pin)
   const [isCommitting, setIsCommitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const voteCount = getPinVoteCount(currentPin)
   const voters = getPinVoters(currentPin)
@@ -97,6 +102,37 @@ export function PinVoteCard({
     setCurrentPin(updated)
     onVoteChange?.(updated)
     setIsCommitting(false)
+  }
+
+  /**
+   * @brief Handles deleting the pin by the trip organizer.
+   */
+  const handleDeletePin = async () => {
+    if (!isOrganizer) return
+
+    setIsDeleting(true)
+    const effectiveTripId = tripId
+
+    if (effectiveTripId && effectiveTripId !== 'default') {
+      try {
+        const res = await deletePinAction(effectiveTripId, currentPin.id)
+        if (res?.error) {
+          console.error('Failed to delete pin:', res.error)
+          setIsDeleting(false)
+          return
+        }
+      } catch (err) {
+        console.error('Failed to delete pin:', err)
+        setIsDeleting(false)
+        return
+      }
+    } else if (effectiveTripId) {
+      removePinFromTrip(effectiveTripId, currentPin.id)
+    }
+
+    onDeletePin?.(currentPin.id)
+    onClose?.()
+    setIsDeleting(false)
   }
 
   const categoryColor = isCommitted ? '#ef4444' : getCategoryColor(currentPin.category)
@@ -165,31 +201,49 @@ export function PinVoteCard({
         </p>
       )}
 
-      {/* Organizer Commit Section */}
+      {/* Organizer Controls */}
       {isOrganizer && (
-        <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-          <div>
-            <span className="text-xs font-semibold text-slate-700">
-              Itinerary:
-            </span>
-            <p className="text-[11px] text-slate-500">
-              {isCommitted ? 'Part of itinerary' : 'Not committed'}
-            </p>
+        <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <span className="text-xs font-semibold text-slate-700">
+                Itinerary:
+              </span>
+              <p className="text-[11px] text-slate-500">
+                {isCommitted ? 'Part of itinerary' : 'Not committed'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              data-testid="toggle-commit-pin-button"
+              onClick={handleToggleCommit}
+              disabled={isCommitting || isDeleting}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition ${
+                isCommitted
+                  ? 'bg-red-100 text-red-800 hover:bg-red-200 border border-red-300'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+              }`}
+            >
+              {isCommitted ? 'Uncommit' : 'Commit'}
+            </button>
           </div>
 
-          <button
-            type="button"
-            data-testid="toggle-commit-pin-button"
-            onClick={handleToggleCommit}
-            disabled={isCommitting}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition ${
-              isCommitted
-                ? 'bg-red-100 text-red-800 hover:bg-red-200 border border-red-300'
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
-            }`}
-          >
-            {isCommitted ? 'Uncommit' : 'Commit'}
-          </button>
+          <div className="flex items-center justify-between pt-1 border-t border-slate-50">
+            <span className="text-xs font-semibold text-slate-700">
+              Pin:
+            </span>
+            <button
+              type="button"
+              data-testid="remove-pin-button"
+              onClick={handleDeletePin}
+              disabled={isDeleting || isCommitting}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200 shadow-sm transition disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span data-testid="delete-pin-button">Remover pin</span>
+            </button>
+          </div>
         </div>
       )}
 

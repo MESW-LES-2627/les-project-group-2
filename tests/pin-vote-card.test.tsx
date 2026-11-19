@@ -5,9 +5,16 @@
 
 import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import { PinVoteCard } from '@/components/map/PinVoteCard'
 import { Pin } from '@/types/map'
+import * as pinsActions from '@/app/trips/actions/pins'
+
+vi.mock('@/app/trips/actions/pins', () => ({
+  toggleCommitPinAction: vi.fn(),
+  deletePinAction: vi.fn(),
+  removePinAction: vi.fn(),
+}))
 
 describe('PinVoteCard Component', () => {
   const samplePin: Pin = {
@@ -159,5 +166,138 @@ describe('PinVoteCard Component', () => {
         commited: false,
       })
     )
+  })
+
+  describe('Organizer remove pin button', () => {
+    it('hides the remove pin button for non-organizers', () => {
+      render(<PinVoteCard pin={samplePin} isOrganizer={false} />)
+      expect(screen.queryByTestId('remove-pin-button')).toBeNull()
+      expect(screen.queryByTestId('delete-pin-button')).toBeNull()
+      expect(screen.queryByRole('button', { name: /remover pin/i })).toBeNull()
+    })
+
+    it('renders the remove pin button for organizers', () => {
+      render(<PinVoteCard pin={samplePin} isOrganizer={true} />)
+      expect(screen.getByTestId('remove-pin-button')).toBeDefined()
+      expect(screen.getByTestId('delete-pin-button')).toBeDefined()
+      expect(screen.getByRole('button', { name: /remover pin/i })).toBeDefined()
+      expect(screen.getByText('Remover pin')).toBeDefined()
+    })
+
+    it('allows organizer to delete a pin and invokes onDeletePin and onClose', async () => {
+      const onDeletePin = vi.fn()
+      const onClose = vi.fn()
+
+      render(
+        <PinVoteCard
+          pin={samplePin}
+          isOrganizer={true}
+          onDeletePin={onDeletePin}
+          onClose={onClose}
+        />
+      )
+
+      const removeBtn = screen.getByRole('button', { name: /remover pin/i })
+      fireEvent.click(removeBtn)
+
+      expect(onDeletePin).toHaveBeenCalledWith(samplePin.id)
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('calls deletePinAction when deleting a pin scoped to a trip', async () => {
+      vi.mocked(pinsActions.deletePinAction).mockResolvedValueOnce({ success: true })
+      const onDeletePin = vi.fn()
+      const onClose = vi.fn()
+
+      render(
+        <PinVoteCard
+          pin={{ ...samplePin, tripId: 'trip-100' }}
+          tripId="trip-100"
+          isOrganizer={true}
+          onDeletePin={onDeletePin}
+          onClose={onClose}
+        />
+      )
+
+      const removeBtn = screen.getByTestId('remove-pin-button')
+      fireEvent.click(removeBtn)
+
+      await waitFor(() => {
+        expect(pinsActions.deletePinAction).toHaveBeenCalledWith('trip-100', samplePin.id)
+        expect(onDeletePin).toHaveBeenCalledWith(samplePin.id)
+        expect(onClose).toHaveBeenCalled()
+      })
+    })
+
+    it('handles error when deletePinAction returns an error', async () => {
+      vi.mocked(pinsActions.deletePinAction).mockResolvedValueOnce({ error: 'DB failure' })
+      const onDeletePin = vi.fn()
+      const onClose = vi.fn()
+
+      render(
+        <PinVoteCard
+          pin={{ ...samplePin, tripId: 'trip-100' }}
+          tripId="trip-100"
+          isOrganizer={true}
+          onDeletePin={onDeletePin}
+          onClose={onClose}
+        />
+      )
+
+      const removeBtn = screen.getByTestId('remove-pin-button')
+      fireEvent.click(removeBtn)
+
+      await waitFor(() => {
+        expect(pinsActions.deletePinAction).toHaveBeenCalledWith('trip-100', samplePin.id)
+      })
+      expect(onDeletePin).not.toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('handles exception when deletePinAction throws', async () => {
+      vi.mocked(pinsActions.deletePinAction).mockRejectedValueOnce(new Error('Network crash'))
+      const onDeletePin = vi.fn()
+      const onClose = vi.fn()
+
+      render(
+        <PinVoteCard
+          pin={{ ...samplePin, tripId: 'trip-100' }}
+          tripId="trip-100"
+          isOrganizer={true}
+          onDeletePin={onDeletePin}
+          onClose={onClose}
+        />
+      )
+
+      const removeBtn = screen.getByTestId('remove-pin-button')
+      fireEvent.click(removeBtn)
+
+      await waitFor(() => {
+        expect(pinsActions.deletePinAction).toHaveBeenCalledWith('trip-100', samplePin.id)
+      })
+      expect(onDeletePin).not.toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('removes pin when tripId is default', async () => {
+      const onDeletePin = vi.fn()
+      const onClose = vi.fn()
+
+      render(
+        <PinVoteCard
+          pin={samplePin}
+          tripId="default"
+          isOrganizer={true}
+          onDeletePin={onDeletePin}
+          onClose={onClose}
+        />
+      )
+
+      const removeBtn = screen.getByTestId('remove-pin-button')
+      fireEvent.click(removeBtn)
+
+      expect(onDeletePin).toHaveBeenCalledWith(samplePin.id)
+      expect(onClose).toHaveBeenCalled()
+    })
   })
 })

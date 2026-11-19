@@ -8,6 +8,8 @@ import {
   createPinAction,
   toggleCommitPinAction,
   getPinsAction,
+  deletePinAction,
+  removePinAction,
 } from '@/app/trips/actions/pins'
 import * as cache from 'next/cache'
 import * as supabaseServer from '@/utils/supabase/server'
@@ -39,6 +41,7 @@ describe('Pins Server Actions', () => {
   let tripMockResult: { data: unknown; error: unknown }
   let pinMockResult: { data: unknown; error: unknown }
   let updateMockResult: { error: unknown }
+  let deleteMockResult: { error: unknown }
   let pinsListMockResult: { data: unknown; error: unknown }
   let votesListMockResult: { data: unknown; error: unknown }
   let insertSingleResult: { data: unknown; error: unknown }
@@ -54,6 +57,7 @@ describe('Pins Server Actions', () => {
     tripMockResult = { data: { organizer_id: 'user-organizer' }, error: null }
     pinMockResult = { data: { commited: false }, error: null }
     updateMockResult = { error: null }
+    deleteMockResult = { error: null }
     pinsListMockResult = { data: [], error: null }
     votesListMockResult = { data: [], error: null }
     insertSingleResult = { data: null, error: null }
@@ -75,8 +79,9 @@ describe('Pins Server Actions', () => {
         }),
         then: (resolve: (val: unknown) => unknown) => {
           if (tableName === 'pins') {
+            const errResult = deleteMockResult.error ? deleteMockResult : updateMockResult
             return Promise.resolve(
-              resolve(updateMockResult.error ? updateMockResult : pinsListMockResult)
+              resolve(errResult.error ? errResult : pinsListMockResult)
             )
           }
           if (tableName === 'pin_votes') {
@@ -304,6 +309,67 @@ describe('Pins Server Actions', () => {
       expect(res.pins?.[0].commited).toBe(true)
       expect(res.pins?.[0].votes?.length).toBe(1)
       expect(res.pins?.[0].votes?.[0].userEmail).toBe('member@planit.app')
+    })
+  })
+
+  describe('deletePinAction', () => {
+    it('returns error when tripId is empty', async () => {
+      const res = await deletePinAction('', 'pin-1')
+      expect(res.error).toBe('Trip ID and Pin ID are required.')
+    })
+
+    it('returns error when pinId is empty', async () => {
+      const res = await deletePinAction('trip-1', '')
+      expect(res.error).toBe('Trip ID and Pin ID are required.')
+    })
+
+    it('returns error when authentication fails', async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: 'Not logged in' },
+      })
+
+      const res = await deletePinAction('trip-1', 'pin-1')
+      expect(res.error).toBe('Authentication required.')
+    })
+
+    it('returns error when verifying trip organizer fails', async () => {
+      tripMockResult = {
+        data: null,
+        error: { message: 'Network timeout' },
+      }
+
+      const res = await deletePinAction('trip-1', 'pin-1')
+      expect(res.error).toBe('Could not verify trip organizer: Network timeout')
+    })
+
+    it('returns error when user is not the trip organizer', async () => {
+      tripMockResult = {
+        data: { organizer_id: 'different-user' },
+        error: null,
+      }
+
+      const res = await deletePinAction('trip-1', 'pin-1')
+      expect(res.error).toBe('Only the trip organizer can delete pins.')
+    })
+
+    it('successfully deletes a pin as trip organizer', async () => {
+      const res = await deletePinAction('trip-1', 'pin-1')
+      expect(res.success).toBe(true)
+      expect(cache.revalidatePath).toHaveBeenCalledWith('/trips/trip-1/itinerary')
+      expect(cache.revalidatePath).toHaveBeenCalledWith('/trips/trip-1/map')
+    })
+
+    it('returns error when pin deletion query fails', async () => {
+      deleteMockResult = { error: { message: 'Deletion failed in db' } }
+
+      const res = await deletePinAction('trip-1', 'pin-1')
+      expect(res.error).toBe('Could not delete pin: Deletion failed in db')
+    })
+
+    it('works identically via removePinAction alias', async () => {
+      const res = await removePinAction('trip-1', 'pin-1')
+      expect(res.success).toBe(true)
     })
   })
 })

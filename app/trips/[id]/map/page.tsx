@@ -47,7 +47,7 @@ async function TripMapContent({ params }: TripMapPageProps) {
 
   const { data: trip, error: tripError } = await supabase
     .from('trips')
-    .select('id')
+    .select('id, name, organizer_id')
     .eq('id', id)
     .maybeSingle()
 
@@ -60,6 +60,7 @@ async function TripMapContent({ params }: TripMapPageProps) {
     redirect('/dashboard')
   }
 
+  const isOrganizer = Boolean(trip.organizer_id && trip.organizer_id === user.id)
   const userEmail = user.email ?? 'member@planit.app'
   let currentUsername: string | undefined
   let currentUserAvatar: string | null = null
@@ -87,6 +88,9 @@ async function TripMapContent({ params }: TripMapPageProps) {
         currentUserAvatar={currentUserAvatar}
         cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
         initialPins={DEFAULT_PORTUGAL_PINS}
+        tripId={trip.id}
+        tripName={trip.name}
+        isOrganizer={isOrganizer}
       />
     </main>
   )
