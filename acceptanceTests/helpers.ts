@@ -1,7 +1,7 @@
 import { BrowserContext } from '@playwright/test'
 import type { PlanitTestSession } from '@/utils/supabase/test-session'
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3000
 export const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || `http://localhost:${PORT}`
 
 export async function setTestSession(context: BrowserContext, session: PlanitTestSession) {
