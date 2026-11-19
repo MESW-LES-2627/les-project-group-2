@@ -413,6 +413,23 @@ describe('Trip workspace page', () => {
         )
     })
 
+    it('shows best-date suggestions to the organizer only', async () => {
+        await renderContent()
+
+        expect(screen.getByText('Suggested dates')).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Use these dates'})).toBeTruthy()
+
+        cleanup()
+        getUser.mockResolvedValueOnce({
+            data: {user: {id: 'member-2'}},
+            error: null,
+        })
+
+        await renderContent()
+
+        expect(screen.queryByText('Suggested dates')).toBeNull()
+    })
+
     it('renders an error message when the trip query fails', async () => {
         const databaseError = {message: 'Database unavailable'}
         query.maybeSingle.mockResolvedValueOnce({data: null, error: databaseError})

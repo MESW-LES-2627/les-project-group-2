@@ -13,6 +13,7 @@ import {AvailabilityCalendar} from './availability-calendar'
 import {LockDates} from './lock-dates'
 import type {DateWindow} from '@/utils/date-windows'
 import {buildAvailabilityCalendar, type AvailabilityRow} from '@/utils/availability'
+import {groupAvailableByDay} from '@/utils/best-dates'
 
 type TripWorkspacePageProps = {
     params: Promise<{ id: string }>
@@ -443,6 +444,9 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                     lockedStart={trip.locked_start_date ?? null}
                     lockedEnd={trip.locked_end_date ?? null}
                     itineraryDayCount={itineraryDays?.length ?? 0}
+                    members={tripMembers.map(({user_id, display_name}) => ({user_id, display_name}))}
+                    availableByDay={groupAvailableByDay(availabilityRows)}
+                    hasAnswers={availabilityRows.length > 0}
                 />
 
                 <DateWindows
