@@ -302,7 +302,7 @@ describe('US-3.3 Acceptance Tests: Committing Pins to Itinerary', () => {
       expect(screen.getByTestId('pin-vote-card')).toBeDefined()
     })
 
-    const removeBtn = screen.getByRole('button', { name: /remover pin/i })
+    const removeBtn = screen.getByRole('button', { name: /Remove pin/i })
     expect(removeBtn).toBeDefined()
 
     // Click "Remover pin"

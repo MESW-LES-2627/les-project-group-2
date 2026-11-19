@@ -173,15 +173,15 @@ describe('PinVoteCard Component', () => {
       render(<PinVoteCard pin={samplePin} isOrganizer={false} />)
       expect(screen.queryByTestId('remove-pin-button')).toBeNull()
       expect(screen.queryByTestId('delete-pin-button')).toBeNull()
-      expect(screen.queryByRole('button', { name: /remover pin/i })).toBeNull()
+      expect(screen.queryByRole('button', { name: /Remove pin/i })).toBeNull()
     })
 
     it('renders the remove pin button for organizers', () => {
       render(<PinVoteCard pin={samplePin} isOrganizer={true} />)
       expect(screen.getByTestId('remove-pin-button')).toBeDefined()
       expect(screen.getByTestId('delete-pin-button')).toBeDefined()
-      expect(screen.getByRole('button', { name: /remover pin/i })).toBeDefined()
-      expect(screen.getByText('Remover pin')).toBeDefined()
+      expect(screen.getByRole('button', { name: /Remove pin/i })).toBeDefined()
+      expect(screen.getByText('Remove pin')).toBeDefined()
     })
 
     it('allows organizer to delete a pin and invokes onDeletePin and onClose', async () => {
@@ -197,7 +197,7 @@ describe('PinVoteCard Component', () => {
         />
       )
 
-      const removeBtn = screen.getByRole('button', { name: /remover pin/i })
+      const removeBtn = screen.getByRole('button', { name: /Remove pin/i })
       fireEvent.click(removeBtn)
 
       expect(onDeletePin).toHaveBeenCalledWith(samplePin.id)
