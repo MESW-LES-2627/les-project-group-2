@@ -178,4 +178,14 @@ describe('DateWindows', () => {
 
     expect((await screen.findByRole('alert')).textContent).toBe('Failed to delete the date window.')
   })
+
+  it('hides every management control once the trip dates are locked', () => {
+    render(<DateWindows tripId='trip-1' windows={windows} isOrganizer locked />)
+
+    expect(screen.getByText(/the trip dates are locked/i)).toBeTruthy()
+    expect(screen.getByText(/1 Jul 2099/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Add date window' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
+  })
 })

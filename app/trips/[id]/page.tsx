@@ -10,8 +10,10 @@ import {leaveTrip, removeTripMember} from '../actions/manage-trip-members'
 import {InviteSettings} from './invite-settings'
 import {DateWindows} from './date-windows'
 import {AvailabilityCalendar} from './availability-calendar'
+import {LockDates} from './lock-dates'
 import type {DateWindow} from '@/utils/date-windows'
 import {buildAvailabilityCalendar, type AvailabilityRow} from '@/utils/availability'
+import {groupAvailableByDay} from '@/utils/best-dates'
 
 type TripWorkspacePageProps = {
     params: Promise<{ id: string }>
@@ -151,6 +153,27 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                         Could not load candidate dates
                     </h1>
                     <p className="mt-2 text-gray-500">{dateWindowsError.message}</p>
+                </div>
+            </main>
+        )
+    }
+
+    const {data: itineraryDays, error: itineraryDaysError} = await supabase
+        .from('trip_itinerary_days')
+        .select('day')
+        .eq('trip_id', id)
+        .order('day', {ascending: true})
+
+    if (itineraryDaysError) {
+        console.error('Error fetching itinerary days:', itineraryDaysError)
+
+        return (
+            <main className="min-h-screen bg-gray-50 px-6 py-12">
+                <div className="mx-auto max-w-5xl">
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        Could not load trip dates
+                    </h1>
+                    <p className="mt-2 text-gray-500">{itineraryDaysError.message}</p>
                 </div>
             </main>
         )
@@ -414,10 +437,23 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                     )}
                 </section>
 
+                <LockDates
+                    tripId={id}
+                    isOrganizer={isOrganizer}
+                    windows={(dateWindows ?? []) as DateWindow[]}
+                    lockedStart={trip.locked_start_date ?? null}
+                    lockedEnd={trip.locked_end_date ?? null}
+                    itineraryDayCount={itineraryDays?.length ?? 0}
+                    members={tripMembers.map(({user_id, display_name}) => ({user_id, display_name}))}
+                    availableByDay={groupAvailableByDay(availabilityRows)}
+                    hasAnswers={availabilityRows.length > 0}
+                />
+
                 <DateWindows
                     tripId={id}
                     windows={(dateWindows ?? []) as DateWindow[]}
                     isOrganizer={isOrganizer}
+                    locked={Boolean(trip.locked_start_date)}
                 />
 
                 {calendar.days.length > 0 && (
@@ -427,6 +463,7 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                         missing={calendar.missing}
                         memberCount={tripMembers.length}
                         myAnswers={myAnswers}
+                        locked={Boolean(trip.locked_start_date)}
                     />
                 )}
 
