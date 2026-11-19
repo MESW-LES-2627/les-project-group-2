@@ -248,9 +248,6 @@ export function TripsCard({ isOpen, onClose, initialTrips }: TripsCardProps) {
 
   if (!isOpen) return null
 
-  console.log("niggers niggers niggers")
-  console.log(trips)
-
   return (
     <section
       role="region"
