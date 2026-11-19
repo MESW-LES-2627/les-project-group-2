@@ -150,6 +150,25 @@ Verify that Next.js compiles the production build without TypeScript or SSR erro
 npm run build
 ```
 
+### Database Migrations
+
+Schema changes go through versioned SQL migrations in `supabase/migrations/`; the Supabase dashboard is not the source of truth.
+
+```bash
+# Create a migration with a correctly ordered timestamp
+supabase migration new add_something
+
+# Rebuild the local database from migrations and run the SQL tests
+supabase db reset --no-seed
+supabase test db
+```
+
+- **Never edit, delete or rename a migration that already exists on `staging` or `main`.** Add a new migration to reconcile existing databases.
+- New migrations must have a timestamp newer than the newest migration on the target branch.
+- Add a `supabase/tests/*.test.sql` (pgTAP) test for every new policy, function or constraint.
+- CI rebuilds a disposable database from all migrations and runs those tests (`Migration Guard` and `Database` jobs).
+- Full rules and the deployment flow: [docs/database-deployments.md](docs/database-deployments.md).
+
 ---
 
 ## 6. Development Workflow & Guidelines
