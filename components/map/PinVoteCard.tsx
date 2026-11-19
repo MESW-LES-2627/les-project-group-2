@@ -2,7 +2,7 @@
 
 /**
  * @file components/map/PinVoteCard.tsx
- * @brief Interactive card for viewing pin details, casting votes, and confirming pins to the itinerary.
+ * @brief Interactive card for viewing pin details, casting votes, editing/deleting pins, and confirming to the itinerary.
  */
 
 import React, { useState } from 'react'
@@ -15,6 +15,8 @@ import {
   hasUserVoted,
 } from '@/types/map'
 import { toggleVoteOnPin } from '@/services/pin-votes'
+import { canEditPin, canDeletePin } from '@/services/pin-management'
+import { Edit2, Trash2 } from 'lucide-react'
 
 interface PinVoteCardProps {
   pin: Pin
@@ -23,11 +25,13 @@ interface PinVoteCardProps {
   isOrganizer?: boolean
   onVoteChange?: (updatedPin: Pin) => void
   onConfirmToggle?: (updatedPin: Pin) => void
+  onEdit?: (pin: Pin) => void
+  onDelete?: (pinId: string) => void
   onClose?: () => void
 }
 
 /**
- * @brief In-place pin details, voting, and confirmation card rendered over the map workspace.
+ * @brief In-place pin details, voting, edit, delete, and confirmation card rendered over the map workspace.
  * @param props Component properties containing target pin and callbacks.
  */
 export function PinVoteCard({
@@ -37,6 +41,8 @@ export function PinVoteCard({
   isOrganizer = false,
   onVoteChange,
   onConfirmToggle,
+  onEdit,
+  onDelete,
   onClose,
 }: PinVoteCardProps) {
   const [prevPin, setPrevPin] = useState<Pin>(pin)
@@ -51,6 +57,8 @@ export function PinVoteCard({
   const voters = getPinVoters(currentPin)
   const userHasVoted = hasUserVoted(currentPin, currentUserEmail)
   const isConfirmed = Boolean(currentPin.isConfirmed)
+  const canEdit = canEditPin(currentPin, currentUserEmail, isOrganizer)
+  const canDelete = canDeletePin(currentPin, currentUserEmail, isOrganizer)
 
   /**
    * @brief Handles toggling vote on the pin for the current user.
@@ -202,6 +210,36 @@ export function PinVoteCard({
           )}
         </div>
       </div>
+
+      {/* Edit and Delete Actions */}
+      {(canEdit || canDelete) && (
+        <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          {canEdit && (
+            <button
+              type="button"
+              data-testid="edit-pin-button"
+              onClick={() => onEdit?.(currentPin)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
+              title="Edit pin details"
+            >
+              <Edit2 className="h-3 w-3" />
+              <span>Edit</span>
+            </button>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              data-testid="delete-pin-button"
+              onClick={() => onDelete?.(currentPin.id)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 transition"
+              title="Delete pin"
+            >
+              <Trash2 className="h-3 w-3" />
+              <span>Delete</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Organizer Action: Confirm or Revert Pin */}
       {isOrganizer && (

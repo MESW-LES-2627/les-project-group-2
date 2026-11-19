@@ -196,4 +196,73 @@ describe('PinVoteCard Component', () => {
     expect(screen.queryByTestId('confirm-pin-button')).toBeNull()
     expect(screen.queryByTestId('revert-pin-button')).toBeNull()
   })
+
+  it('renders edit and delete buttons for the pin author on a proposed pin', () => {
+    const onEdit = vi.fn()
+    const onDelete = vi.fn()
+    render(
+      <PinVoteCard
+        pin={samplePin}
+        currentUserEmail="organizer@planit.app"
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    )
+
+    const editBtn = screen.getByTestId('edit-pin-button')
+    const deleteBtn = screen.getByTestId('delete-pin-button')
+
+    expect(editBtn).toBeDefined()
+    expect(deleteBtn).toBeDefined()
+
+    fireEvent.click(editBtn)
+    expect(onEdit).toHaveBeenCalledWith(samplePin)
+
+    fireEvent.click(deleteBtn)
+    expect(onDelete).toHaveBeenCalledWith(samplePin.id)
+  })
+
+  it('hides edit and delete buttons for non-author member on proposed pin', () => {
+    render(
+      <PinVoteCard
+        pin={samplePin}
+        currentUserEmail="stranger@planit.app"
+        isOrganizer={false}
+      />
+    )
+
+    expect(screen.queryByTestId('edit-pin-button')).toBeNull()
+    expect(screen.queryByTestId('delete-pin-button')).toBeNull()
+  })
+
+  it('hides edit and delete buttons from author when pin is confirmed, unless organizer', () => {
+    const confirmedPin: Pin = {
+      ...samplePin,
+      proposedBy: 'author@planit.app',
+      isConfirmed: true,
+    }
+
+    const { rerender } = render(
+      <PinVoteCard
+        pin={confirmedPin}
+        currentUserEmail="author@planit.app"
+        isOrganizer={false}
+      />
+    )
+
+    expect(screen.queryByTestId('edit-pin-button')).toBeNull()
+    expect(screen.queryByTestId('delete-pin-button')).toBeNull()
+
+    // Organizer can edit and delete confirmed pin
+    rerender(
+      <PinVoteCard
+        pin={confirmedPin}
+        currentUserEmail="author@planit.app"
+        isOrganizer={true}
+      />
+    )
+
+    expect(screen.getByTestId('edit-pin-button')).toBeDefined()
+    expect(screen.getByTestId('delete-pin-button')).toBeDefined()
+  })
 })
