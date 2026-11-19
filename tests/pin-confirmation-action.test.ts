@@ -26,14 +26,17 @@ describe('Pin Confirmation Server Actions', () => {
   let mockPinsQuery: {
     update: ReturnType<typeof vi.fn>
     eq: ReturnType<typeof vi.fn>
-    then: (resolve: (val: { error: unknown }) => unknown) => Promise<unknown>
+    select: ReturnType<typeof vi.fn>
+    then: (resolve: (val: { data: unknown; error: unknown }) => unknown) => Promise<unknown>
   }
   let mockGetUser: ReturnType<typeof vi.fn>
   let updateError: unknown
+  let updatedRows: Array<{ id: string }>
 
   beforeEach(() => {
     vi.clearAllMocks()
     updateError = null
+    updatedRows = [{ id: 'pin-1' }]
 
     mockTripsQuery = {
       select: vi.fn(() => mockTripsQuery),
@@ -47,7 +50,9 @@ describe('Pin Confirmation Server Actions', () => {
     mockPinsQuery = {
       update: vi.fn(() => mockPinsQuery),
       eq: vi.fn(() => mockPinsQuery),
-      then: (resolve) => Promise.resolve(resolve({ error: updateError })),
+      select: vi.fn(() => mockPinsQuery),
+      then: (resolve) =>
+        Promise.resolve(resolve({ data: updatedRows, error: updateError })),
     }
 
     mockGetUser = vi.fn().mockResolvedValue({
@@ -116,6 +121,13 @@ describe('Pin Confirmation Server Actions', () => {
       const res = await confirmPinAction('trip-1', 'pin-1')
       expect(res).toEqual({ error: 'Failed to confirm pin.' })
     })
+
+    it('returns error when RLS updates no rows', async () => {
+      updatedRows = []
+
+      const res = await confirmPinAction('trip-1', 'pin-1')
+      expect(res).toEqual({ error: 'Failed to confirm pin.' })
+    })
   })
 
   describe('revertPinAction', () => {
@@ -133,6 +145,13 @@ describe('Pin Confirmation Server Actions', () => {
 
     it('returns error when database update fails', async () => {
       updateError = { message: 'DB update error' }
+
+      const res = await revertPinAction('trip-1', 'pin-1')
+      expect(res).toEqual({ error: 'Failed to revert pin.' })
+    })
+
+    it('returns error when RLS updates no rows', async () => {
+      updatedRows = []
 
       const res = await revertPinAction('trip-1', 'pin-1')
       expect(res).toEqual({ error: 'Failed to revert pin.' })
