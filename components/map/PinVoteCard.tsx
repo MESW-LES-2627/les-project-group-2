@@ -241,7 +241,7 @@ export function PinVoteCard({
               className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200 shadow-sm transition disabled:opacity-50"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span data-testid="delete-pin-button">Remover pin</span>
+              <span data-testid="delete-pin-button">Remove pin</span>
             </button>
           </div>
         </div>
