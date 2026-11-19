@@ -21,6 +21,7 @@ import { ProfileCard } from '@/components/profile'
 import { confirmPinAction, revertPinAction } from '@/app/trips/actions/pin-confirmation'
 import { createPinAction } from '@/app/trips/actions/create-pin'
 import { togglePinVoteAction } from '@/app/trips/actions/vote-pin'
+import { updatePinAction, deletePinAction } from '@/app/trips/actions/manage-pins'
 
 // Dynamic import of LeafletMap with SSR disabled to prevent `window is not defined`
 const DynamicLeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -261,21 +262,70 @@ export function TripMapContainer({
   )
 
   /**
-   * @brief Handles saving pin edits.
+   * @brief Handles saving pin edits and persists them for real trips.
    */
-  const handleSavePinEdit = useCallback((updatedPin: Pin) => {
-    setPins((prev) => prev.map((p) => (p.id === updatedPin.id ? updatedPin : p)))
-    setSelectedPin((prev) => (prev?.id === updatedPin.id ? updatedPin : prev))
-    setEditingPin(null)
-  }, [])
+  const handleSavePinEdit = useCallback(
+    (updatedPin: Pin) => {
+      const previousPin = pins.find((p) => p.id === updatedPin.id)
+      setPins((prev) => prev.map((p) => (p.id === updatedPin.id ? updatedPin : p)))
+      setSelectedPin((prev) => (prev?.id === updatedPin.id ? updatedPin : prev))
+      setEditingPin(null)
+
+      if (!shouldPersist) return
+
+      void updatePinAction(updatedPin.tripId, updatedPin.id, {
+        name: updatedPin.name,
+        description: updatedPin.description ?? '',
+        category: updatedPin.category,
+        lat: updatedPin.lat,
+        lng: updatedPin.lng,
+        date: updatedPin.date,
+      })
+        .then((result) => {
+          if (!result.error) return
+          setPersistenceError(result.error)
+          if (previousPin) restorePin(previousPin)
+        })
+        .catch((error) => {
+          console.error('Failed to persist pin edit:', error)
+          setPersistenceError('Failed to save the pin changes.')
+          if (previousPin) restorePin(previousPin)
+        })
+    },
+    [pins, restorePin, shouldPersist]
+  )
 
   /**
-   * @brief Handles deleting a pin (removes pin and its votes).
+   * @brief Handles deleting a pin (removes pin and its votes) and persists the deletion.
    */
-  const handleDeletePin = useCallback((pinId: string) => {
-    setPins((prev) => prev.filter((p) => p.id !== pinId))
-    setSelectedPin(null)
-  }, [])
+  const handleDeletePin = useCallback(
+    (pinId: string) => {
+      const deletedPin = pins.find((p) => p.id === pinId)
+      const deletedIndex = pins.findIndex((p) => p.id === pinId)
+      setPins((prev) => prev.filter((p) => p.id !== pinId))
+      setSelectedPin(null)
+
+      if (!shouldPersist || !deletedPin) return
+
+      void deletePinAction(tripId, pinId)
+        .then((result) => {
+          if (!result.error) return
+          setPersistenceError(result.error)
+          setPins((prev) => {
+            if (prev.some((p) => p.id === pinId)) return prev
+            const next = [...prev]
+            next.splice(Math.max(0, deletedIndex), 0, deletedPin)
+            return next
+          })
+        })
+        .catch((error) => {
+          console.error('Failed to persist pin deletion:', error)
+          setPersistenceError('Failed to delete the pin.')
+          setPins((prev) => (prev.some((p) => p.id === pinId) ? prev : [...prev, deletedPin]))
+        })
+    },
+    [pins, shouldPersist, tripId]
+  )
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-950">
