@@ -326,6 +326,7 @@ export function TripMapContainer({
       {/* In-Place Pin Details and Voting Card */}
       {selectedPin && (
         <PinVoteCard
+          key={selectedPin.id}
           pin={selectedPin}
           currentUserEmail={currentUserEmail}
           isOrganizer={isOrganizer}
