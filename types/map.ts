@@ -26,6 +26,8 @@ export interface Pin {
   proposedBy: string
   createdAt: string
   votes?: PinVote[]
+  commited?: boolean
+  committed?: boolean
 }
 
 export interface PlaceSearchResult {
@@ -203,4 +205,13 @@ export function hasUserVoted(pin: Pin, userEmail: string, date?: string): boolea
   if (!userEmail) return false
   const voters = getPinVoters(pin, date)
   return voters.includes(userEmail)
+}
+
+/**
+ * @brief Checks if a pin is committed to the trip itinerary.
+ * @param pin The target pin.
+ * @return True if committed, false otherwise.
+ */
+export function isPinCommitted(pin: Pin): boolean {
+  return Boolean(pin.commited ?? pin.committed)
 }

@@ -106,6 +106,7 @@ export async function togglePinVoteAction(
   const voters = (allVotes || []).map((v) => v.user_email)
 
   revalidatePath(`/trips/${tripId}/map`)
+  revalidatePath(`/trips/${tripId}/itinerary`)
   return {
     success: true,
     voted,

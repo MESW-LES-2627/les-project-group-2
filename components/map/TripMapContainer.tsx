@@ -16,6 +16,7 @@ import type { UserMemberTrip } from '@/app/trips/actions/get-member-trips'
 import { Pin, PlaceSearchResult } from '@/types/map'
 import { PinVoteCard } from './PinVoteCard'
 import { ProfileCard } from '@/components/profile'
+import { createPinAction } from '@/app/trips/actions/pins'
 import Link from 'next/link'
 
 // Dynamic import of LeafletMap with SSR disabled to prevent `window is not defined`
@@ -36,6 +37,11 @@ interface TripMapContainerProps {
   cartoApiKey?: string
   initialTrips?: UserMemberTrip[]
   initialPins?: Pin[]
+  allowPinCreation?: boolean
+  mode?: 'dashboard' | 'itinerary'
+  tripId?: string
+  tripName?: string
+  isOrganizer?: boolean
 }
 
 /**
@@ -49,6 +55,11 @@ export function TripMapContainer({
   cartoApiKey,
   initialTrips,
   initialPins = [],
+  allowPinCreation = true,
+  mode = 'dashboard',
+  tripId,
+  tripName,
+  isOrganizer = false,
 }: TripMapContainerProps) {
   const [pins, setPins] = useState<Pin[]>(initialPins)
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
@@ -67,23 +78,45 @@ export function TripMapContainer({
    * @param place The chosen search result.
    */
   const handleSelectPlace = useCallback(
-    (place: PlaceSearchResult) => {
+    async (place: PlaceSearchResult) => {
+      setFlyToTarget({ lat: place.lat, lng: place.lon, zoom: 14 })
+      if (!allowPinCreation) return
+
+      if (mode === 'itinerary' && tripId) {
+        try {
+          const res = await createPinAction(tripId, {
+            name: place.name,
+            lat: place.lat,
+            lng: place.lon,
+            category: 'sightseeing',
+          })
+          if (res?.pin) {
+            setPins((prev) => [...prev, res.pin!])
+            setSelectedPin(res.pin!)
+            return
+          }
+        } catch (err) {
+          console.error('Failed to create pin from search:', err)
+        }
+      }
+
       const newPin: Pin = {
         id: `pin-${Date.now()}`,
-        tripId: 'default',
+        tripId: tripId || 'default',
         name: place.name,
         category: 'sightseeing',
         lat: place.lat,
         lng: place.lon,
         proposedBy: currentUserEmail || 'You',
         createdAt: new Date().toISOString(),
+        commited: false,
+        committed: false,
         votes: [],
       }
       setPins((prev) => [...prev, newPin])
       setSelectedPin(newPin)
-      setFlyToTarget({ lat: place.lat, lng: place.lon, zoom: 14 })
     },
-    [currentUserEmail]
+    [allowPinCreation, mode, tripId, currentUserEmail]
   )
 
   /**
@@ -91,22 +124,44 @@ export function TripMapContainer({
    * @param lat Latitude of clicked point.
    */
   const handleMapClick = useCallback(
-    (lat: number, lng: number) => {
+    async (lat: number, lng: number) => {
+      if (!allowPinCreation) return
+
+      if (mode === 'itinerary' && tripId) {
+        try {
+          const res = await createPinAction(tripId, {
+            name: `Point (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
+            lat,
+            lng,
+            category: 'sightseeing',
+          })
+          if (res?.pin) {
+            setPins((prev) => [...prev, res.pin!])
+            setSelectedPin(res.pin!)
+            return
+          }
+        } catch (err) {
+          console.error('Failed to create pin on map click:', err)
+        }
+      }
+
       const newPin: Pin = {
         id: `pin-${Date.now()}`,
-        tripId: 'default',
+        tripId: tripId || 'default',
         name: `Point (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
         category: 'sightseeing',
         lat,
         lng,
         proposedBy: currentUserEmail || 'You',
         createdAt: new Date().toISOString(),
+        commited: false,
+        committed: false,
         votes: [],
       }
       setPins((prev) => [...prev, newPin])
       setSelectedPin(newPin)
     },
-    [currentUserEmail]
+    [allowPinCreation, mode, tripId, currentUserEmail]
   )
 
   /**
@@ -126,87 +181,118 @@ export function TripMapContainer({
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-950">
-      {/* Top Floating Header with Search Bar and Sign Out */}
-      <header className="absolute top-0 inset-x-0 z-[800] p-4 pointer-events-none flex items-center justify-between gap-3">
-        {/* Left: App Logo Badge */}
-        <div className="shrink-0 pointer-events-auto flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10 text-white text-xs font-semibold shadow-lg backdrop-blur-md">
-            <MapPin className="h-4 w-4 text-blue-400" />
-            <span className="hidden sm:inline">PlanIt</span>
+      {mode === 'itinerary' ? (
+        /* Top Floating Header for Itinerary Page: ONLY Two Cards */
+        <header className="absolute top-0 inset-x-0 z-[800] p-4 pointer-events-none flex items-center justify-between gap-3">
+          {/* Card 1: Botão Voltar */}
+          <div className="shrink-0 pointer-events-auto">
+            <Link
+              href={tripId ? `/trips/${tripId}` : '/dashboard'}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
+              title="Voltar"
+              data-testid="back-to-trip-button"
+            >
+              <span>← Voltar</span>
+            </Link>
           </div>
 
-          {/* Button to open member trips card */}
-          <button
-            type="button"
-            data-testid="toggle-trips-card-button"
-            onClick={() => setIsTripsCardOpen((prev) => !prev)}
-            aria-expanded={isTripsCardOpen}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-white text-xs font-semibold shadow-lg backdrop-blur-md transition-colors ${
-              isTripsCardOpen
-                ? 'bg-slate-800 border-white/30 text-sky-300'
-                : 'bg-slate-900/85 hover:bg-slate-800 border-white/10'
-            }`}
-            title="My Trips"
-          >
-            <Compass className="h-3.5 w-3.5 text-blue-400" />
-            <span>Trips</span>
-          </button>
-        </div>
+          {/* Card 2: Nome da Trip */}
+          <div className="shrink-0 pointer-events-auto">
+            <div
+              className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10 text-white text-xs font-semibold shadow-lg backdrop-blur-md"
+              data-testid="trip-name-card"
+            >
+              <MapPin className="h-4 w-4 text-blue-400" />
+              <span>{tripName || 'Trip'}</span>
+            </div>
+          </div>
+        </header>
+      ) : (
+        /* Top Floating Header with Search Bar and Sign Out (Dashboard Mode) */
+        <header className="absolute top-0 inset-x-0 z-[800] p-4 pointer-events-none flex items-center justify-between gap-3">
+          {/* Left: App Logo Badge */}
+          <div className="shrink-0 pointer-events-auto flex items-center gap-2">
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10 text-white text-xs font-semibold shadow-lg backdrop-blur-md">
+              <MapPin className="h-4 w-4 text-blue-400" />
+              <span className="hidden sm:inline">PlanIt</span>
+            </div>
 
-        {/* Center: Simple Search Bar */}
-        <div className="pointer-events-auto flex-1 max-w-md mx-auto">
-          <SearchBar
-            onSelectPlace={handleSelectPlace}
-            placeholder="Search places across the map..."
-          />
-        </div>
-
-        {/* Right: User Profile Button & Sign Out */}
-        <div className="shrink-0 pointer-events-auto flex items-center gap-2">
-          {displayName && (
+            {/* Button to open member trips card */}
             <button
               type="button"
-              onClick={() => setIsProfileOpen((prev) => !prev)}
-              aria-expanded={isProfileOpen}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
-              title={displayName}
+              data-testid="toggle-trips-card-button"
+              onClick={() => setIsTripsCardOpen((prev) => !prev)}
+              aria-expanded={isTripsCardOpen}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-white text-xs font-semibold shadow-lg backdrop-blur-md transition-colors ${
+                isTripsCardOpen
+                  ? 'bg-slate-800 border-white/30 text-sky-300'
+                  : 'bg-slate-900/85 hover:bg-slate-800 border-white/10'
+              }`}
+              title="My Trips"
             >
-              <span className="relative flex h-6 w-6 shrink-0 overflow-hidden rounded-full border border-white/20 bg-slate-800">
-                <img
-                  src={avatarUrl || '/no_pic.png'}
-                  alt={displayName}
-                  onError={(e) => {
-                    e.currentTarget.src = '/no_pic.png'
-                  }}
-                  className="h-full w-full object-cover"
-                />
-              </span>
-              <span className="hidden md:inline font-medium text-slate-200">
-                {displayName}
-              </span>
+              <Compass className="h-3.5 w-3.5 text-blue-400" />
+              <span>Trips</span>
             </button>
-          )}
-          <form action={async () => { await logout() }}>
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Sign out</span>
-            </button>
-          </form>
-        </div>
-      </header>
+          </div>
 
-      {/* Floating Member Trips Card */}
-      <TripsCard
-        isOpen={isTripsCardOpen}
-        onClose={() => setIsTripsCardOpen(false)}
-        initialTrips={initialTrips}
-      />
-      {/* Center Profile Modal Component */}
-      {isProfileOpen && (
+          {/* Center: Simple Search Bar */}
+          <div className="pointer-events-auto flex-1 max-w-md mx-auto">
+            <SearchBar
+              onSelectPlace={handleSelectPlace}
+              placeholder="Search places across the map..."
+            />
+          </div>
+
+          {/* Right: User Profile Button & Sign Out */}
+          <div className="shrink-0 pointer-events-auto flex items-center gap-2">
+            {displayName && (
+              <button
+                type="button"
+                onClick={() => setIsProfileOpen((prev) => !prev)}
+                aria-expanded={isProfileOpen}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
+                title={displayName}
+              >
+                <span className="relative flex h-6 w-6 shrink-0 overflow-hidden rounded-full border border-white/20 bg-slate-800">
+                  <img
+                    src={avatarUrl || '/no_pic.png'}
+                    alt={displayName}
+                    onError={(e) => {
+                      e.currentTarget.src = '/no_pic.png'
+                    }}
+                    className="h-full w-full object-cover"
+                  />
+                </span>
+                <span className="hidden md:inline font-medium text-slate-200">
+                  {displayName}
+                </span>
+              </button>
+            )}
+            <form action={async () => { await logout() }}>
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+            </form>
+          </div>
+        </header>
+      )}
+
+      {/* Floating Member Trips Card (Dashboard mode only) */}
+      {mode !== 'itinerary' && (
+        <TripsCard
+          isOpen={isTripsCardOpen}
+          onClose={() => setIsTripsCardOpen(false)}
+          initialTrips={initialTrips}
+        />
+      )}
+
+      {/* Center Profile Modal Component (Dashboard mode only) */}
+      {mode !== 'itinerary' && isProfileOpen && (
         <div className="absolute inset-0 z-[850] flex items-center justify-center p-4 pointer-events-none">
           <div className="pointer-events-auto">
             <ProfileCard
@@ -242,6 +328,8 @@ export function TripMapContainer({
         <PinVoteCard
           pin={selectedPin}
           currentUserEmail={currentUserEmail}
+          isOrganizer={isOrganizer}
+          tripId={tripId}
           onVoteChange={handleVoteChange}
           onClose={() => setSelectedPin(null)}
         />

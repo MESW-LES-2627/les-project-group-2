@@ -18,6 +18,9 @@ export function PromoteToOrganizerButton({
         setIsPending(true)
         try {
             await promoteToOrganizer(tripId, memberId)
+            if (typeof window !== 'undefined' && window.location?.reload) {
+                window.location.reload()
+            }
         } catch (error) {
             console.error('Error promoting member to organizer:', error)
             setIsPending(false)

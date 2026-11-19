@@ -217,7 +217,10 @@ describe('Trip workspace page', () => {
         expect(screen.getByRole('button', {name: 'Promote to organizer'})).toBeTruthy()
         expect(screen.getByRole('button', {name: 'Remove member'})).toBeTruthy()
         expect(screen.getByRole('link', {name: /map/i}).getAttribute('href')).toBe(
-            '/trips/trip-1/map'
+            '/dashboard'
+        )
+        expect(screen.getByRole('link', {name: /itinerary/i}).getAttribute('href')).toBe(
+            '/trips/trip-1/itinerary'
         )
         expect(screen.getByText('Delete this trip')).toBeTruthy()
         expect(

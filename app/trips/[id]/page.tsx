@@ -33,26 +33,28 @@ function getOrganizer(tripMembers: TripMember[]) {
   return 'Trip organizer'
 }
 
-const sections = [
+function getSections(tripId: string) {
+  return [
     {
-        title: 'Map',
-        description: 'Discover places and explore destinations.',
-        icon: '🗺️',
-        link: '/dashboard',
+      title: 'Map',
+      description: 'Discover places and explore destinations.',
+      icon: '🗺️',
+      link: '/dashboard',
     },
     {
-        title: 'Itinerary',
-        description: 'Build your plans and organize activities.',
-        icon: '🧭',
-        link: '',
+      title: 'Itinerary',
+      description: 'Build your plans and organize activities.',
+      icon: '🧭',
+      link: `/trips/${tripId}/itinerary`,
     },
     {
-        title: 'Expenses',
-        description: 'Keep track of costs and shared expenses.',
-        icon: '💳',
-        link: '  ',
+      title: 'Expenses',
+      description: 'Keep track of costs and shared expenses.',
+      icon: '💳',
+      link: '',
     },
-]
+  ]
+}
 
 export default function TripWorkspacePage({
                                               params,
@@ -495,10 +497,10 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                      {sections.map((section) => (
+                      {getSections(id).map((section) => (
                         <Link
-                          key={section.link}
-                          href={section.link}
+                          key={section.title}
+                          href={section.link || '#'}
                         >
                           <div
                               key={section.title}

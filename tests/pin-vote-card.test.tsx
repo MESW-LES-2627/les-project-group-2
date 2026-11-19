@@ -118,4 +118,46 @@ describe('PinVoteCard Component', () => {
 
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('hides the commit button for non-organizers', () => {
+    render(<PinVoteCard pin={samplePin} isOrganizer={false} />)
+    expect(screen.queryByTestId('toggle-commit-pin-button')).toBeNull()
+  })
+
+  it('allows organizer to commit and uncommit pin to itinerary', () => {
+    const onVoteChange = vi.fn()
+    render(
+      <PinVoteCard
+        pin={samplePin}
+        isOrganizer={true}
+        onVoteChange={onVoteChange}
+      />
+    )
+
+    const commitBtn = screen.getByTestId('toggle-commit-pin-button')
+    expect(commitBtn.textContent).toBe('Commit')
+    expect(screen.queryByTestId('pin-committed-badge')).toBeNull()
+
+    // Click commit
+    fireEvent.click(commitBtn)
+
+    expect(commitBtn.textContent).toBe('Uncommit')
+    expect(screen.getByTestId('pin-committed-badge')).toBeDefined()
+    expect(onVoteChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        commited: true,
+      })
+    )
+
+    // Click uncommit
+    fireEvent.click(commitBtn)
+
+    expect(commitBtn.textContent).toBe('Commit')
+    expect(screen.queryByTestId('pin-committed-badge')).toBeNull()
+    expect(onVoteChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        commited: false,
+      })
+    )
+  })
 })

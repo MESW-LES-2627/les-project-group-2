@@ -13,13 +13,18 @@ import {
   getPinVoteCount,
   getPinVoters,
   hasUserVoted,
+  isPinCommitted,
 } from '@/types/map'
 import { toggleVoteOnPin } from '@/services/pin-votes'
+import { toggleCommitPinAction } from '@/app/trips/actions/pins'
+import { togglePinVoteAction } from '@/app/trips/actions/vote-pin'
 
 interface PinVoteCardProps {
   pin: Pin
   currentUserEmail?: string
   currentUserId?: string
+  isOrganizer?: boolean
+  tripId?: string
   onVoteChange?: (updatedPin: Pin) => void
   onClose?: () => void
 }
@@ -32,17 +37,21 @@ export function PinVoteCard({
   pin,
   currentUserEmail = 'member@planit.app',
   currentUserId,
+  isOrganizer = false,
+  tripId,
   onVoteChange,
   onClose,
 }: PinVoteCardProps) {
   const [currentPin, setCurrentPin] = useState<Pin>(pin)
+  const [isCommitting, setIsCommitting] = useState(false)
 
   const voteCount = getPinVoteCount(currentPin)
   const voters = getPinVoters(currentPin)
   const userHasVoted = hasUserVoted(currentPin, currentUserEmail)
+  const isCommitted = isPinCommitted(currentPin)
 
   /**
-   * @brief Handles toggling vote on the pin for the current user.
+   * @brief Handles toggling vote on the pin for the current user and persisting to database.
    */
   const handleToggleVote = () => {
     const updated = toggleVoteOnPin(
@@ -55,9 +64,42 @@ export function PinVoteCard({
     )
     setCurrentPin(updated)
     onVoteChange?.(updated)
+
+    const effectiveTripId = tripId
+    if (effectiveTripId && effectiveTripId !== 'default') {
+      togglePinVoteAction(effectiveTripId, currentPin.id, currentPin.date).catch((err) => {
+        console.error('Failed to cast vote on database:', err)
+      })
+    }
   }
 
-  const categoryColor = getCategoryColor(currentPin.category)
+  /**
+   * @brief Handles toggling the commit status of the pin for trip organizers.
+   */
+  const handleToggleCommit = async () => {
+    setIsCommitting(true)
+    const nextStatus = !isCommitted
+    const effectiveTripId = tripId
+
+    if (effectiveTripId && effectiveTripId !== 'default') {
+      try {
+        await toggleCommitPinAction(effectiveTripId, currentPin.id)
+      } catch (err) {
+        console.error('Failed to toggle commit status:', err)
+      }
+    }
+
+    const updated: Pin = {
+      ...currentPin,
+      commited: nextStatus,
+      committed: nextStatus,
+    }
+    setCurrentPin(updated)
+    onVoteChange?.(updated)
+    setIsCommitting(false)
+  }
+
+  const categoryColor = isCommitted ? '#ef4444' : getCategoryColor(currentPin.category)
 
   return (
     <div
@@ -67,7 +109,7 @@ export function PinVoteCard({
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-1.5">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span
               className="inline-block h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: categoryColor }}
@@ -75,6 +117,14 @@ export function PinVoteCard({
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               {getCategoryLabel(currentPin.category)}
             </span>
+            {isCommitted && (
+              <span
+                data-testid="pin-committed-badge"
+                className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700"
+              >
+                In itinerary
+              </span>
+            )}
           </div>
           <h3
             data-testid="pin-name"
@@ -115,8 +165,36 @@ export function PinVoteCard({
         </p>
       )}
 
+      {/* Organizer Commit Section */}
+      {isOrganizer && (
+        <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+          <div>
+            <span className="text-xs font-semibold text-slate-700">
+              Itinerary:
+            </span>
+            <p className="text-[11px] text-slate-500">
+              {isCommitted ? 'Part of itinerary' : 'Not committed'}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            data-testid="toggle-commit-pin-button"
+            onClick={handleToggleCommit}
+            disabled={isCommitting}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition ${
+              isCommitted
+                ? 'bg-red-100 text-red-800 hover:bg-red-200 border border-red-300'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+            }`}
+          >
+            {isCommitted ? 'Uncommit' : 'Commit'}
+          </button>
+        </div>
+      )}
+
       {/* Voting Section */}
-      <div className="mt-4 pt-3.5 border-t border-slate-100">
+      <div className="mt-3.5 pt-3 border-t border-slate-100">
         <div className="flex items-center justify-between gap-2">
           <div>
             <span

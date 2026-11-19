@@ -60,6 +60,8 @@ async function Content() {
         currentUsername={currentUsername}
         currentUserAvatar={currentUserAvatar}
         cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
+        allowPinCreation={false}
+        initialPins={[]}
       />
     </main>
   )

@@ -38,8 +38,8 @@ interface LeafletMapProps {
  * @param category The pin category.
  * @return Leaflet DivIcon instance.
  */
-function createPinIcon(category: Pin['category']): L.DivIcon {
-  const color = getCategoryColor(category)
+function createPinIcon(category: Pin['category'], isCommitted?: boolean): L.DivIcon {
+  const color = isCommitted ? '#ef4444' : getCategoryColor(category)
   return L.divIcon({
     className: 'custom-pin-marker',
     html: `
@@ -154,8 +154,9 @@ export default function LeafletMap({
     markersGroup.clearLayers()
 
     pins.forEach((pin) => {
+      const isCommitted = Boolean(pin.commited ?? pin.committed)
       const marker = L.marker([pin.lat, pin.lng], {
-        icon: createPinIcon(pin.category),
+        icon: createPinIcon(pin.category, isCommitted),
         title: pin.name,
       })
 
@@ -169,7 +170,7 @@ export default function LeafletMap({
       const voteCount = getPinVoteCount(pin)
       marker.bindPopup(`
         <div style="font-family: inherit; font-size: 13px; font-weight: 600; color: #0f172a; padding: 2px 4px;">
-          ${pin.name}
+          ${pin.name} ${isCommitted ? '<span style="color: #ef4444; font-size: 11px; margin-left: 4px;">(Itinerary)</span>' : ''}
           ${voteCount > 0 ? `<div style="font-size: 11px; color: #475569; font-weight: 500; margin-top: 2px;">👍 ${voteCount} ${voteCount === 1 ? 'vote' : 'votes'}</div>` : ''}
         </div>
       `)
