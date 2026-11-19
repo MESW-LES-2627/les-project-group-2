@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { connection } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { TripMapContainer } from '@/components/map/TripMapContainer'
+import { getUserMemberTrips } from '@/app/trips/actions/get-member-trips'
+import { getTripPins } from '@/app/trips/actions/get-trip-pins'
 
 /**
  * @file app/dashboard/page.tsx
@@ -52,14 +54,25 @@ async function Content() {
     }
   }
 
+  const memberTrips = await getUserMemberTrips()
+  // Prefer a trip the user organizes, so organizer actions are available from the landing map.
+  const activeTrip =
+    memberTrips.find((trip) => trip.organizer_id === user.id) ?? memberTrips[0]
+  const isOrganizer = Boolean(activeTrip && activeTrip.organizer_id === user.id)
+  const initialPins = activeTrip ? await getTripPins(activeTrip.id) : []
+
   return (
     <main className="w-screen h-screen overflow-hidden">
       <TripMapContainer
         key={user.id}
+        tripId={activeTrip?.id}
         currentUserEmail={user.email}
         currentUsername={currentUsername}
         currentUserAvatar={currentUserAvatar}
         cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
+        initialTrips={memberTrips}
+        initialPins={initialPins}
+        isOrganizer={isOrganizer}
       />
     </main>
   )

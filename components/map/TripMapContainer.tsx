@@ -17,6 +17,9 @@ import type { UserMemberTrip } from '@/app/trips/actions/get-member-trips'
 import { Pin, PlaceSearchResult } from '@/types/map'
 import { PinVoteCard } from './PinVoteCard'
 import { ProfileCard } from '@/components/profile'
+import { confirmPinAction, revertPinAction } from '@/app/trips/actions/pin-confirmation'
+import { createPinAction } from '@/app/trips/actions/create-pin'
+import { togglePinVoteAction } from '@/app/trips/actions/vote-pin'
 
 // Dynamic import of LeafletMap with SSR disabled to prevent `window is not defined`
 const DynamicLeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -64,6 +67,10 @@ export function TripMapContainer({
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [updatedUsername, setUpdatedUsername] = useState<string | null>(null)
   const [updatedAvatarUrl, setUpdatedAvatarUrl] = useState<string | null | undefined>(undefined)
+  const [persistenceError, setPersistenceError] = useState<string | null>(null)
+
+  // The demo map ('default') has no database row; only real trips are persisted.
+  const shouldPersist = Boolean(tripId && tripId !== 'default')
 
   const username = updatedUsername ?? currentUsername
   const avatarUrl = updatedAvatarUrl !== undefined ? updatedAvatarUrl : currentUserAvatar
@@ -75,7 +82,27 @@ export function TripMapContainer({
    * @param place The chosen search result.
    */
   const handleSelectPlace = useCallback(
-    (place: PlaceSearchResult) => {
+    async (place: PlaceSearchResult) => {
+      if (shouldPersist) {
+        const result = await createPinAction(tripId!, {
+          name: place.name,
+          category: 'sightseeing',
+          lat: place.lat,
+          lng: place.lon,
+        })
+
+        if (result.error || !result.pin) {
+          setPersistenceError(result.error ?? 'Failed to add pin.')
+          return
+        }
+
+        const createdPin = result.pin
+        setPins((prev) => [...prev, createdPin])
+        setSelectedPin(createdPin)
+        setFlyToTarget({ lat: place.lat, lng: place.lon, zoom: 14 })
+        return
+      }
+
       const newPin: Pin = {
         id: `pin-${Date.now()}`,
         tripId,
@@ -92,19 +119,41 @@ export function TripMapContainer({
       setSelectedPin(newPin)
       setFlyToTarget({ lat: place.lat, lng: place.lon, zoom: 14 })
     },
-    [currentUserEmail, tripId]
+    [currentUserEmail, shouldPersist, tripId]
   )
 
   /**
    * @brief Handles map click: drops a pin at clicked coordinates and opens its voting card.
    * @param lat Latitude of clicked point.
+   * @param lng Longitude of clicked point.
    */
   const handleMapClick = useCallback(
-    (lat: number, lng: number) => {
+    async (lat: number, lng: number) => {
+      const name = `Point (${lat.toFixed(3)}, ${lng.toFixed(3)})`
+
+      if (shouldPersist) {
+        const result = await createPinAction(tripId!, {
+          name,
+          category: 'sightseeing',
+          lat,
+          lng,
+        })
+
+        if (result.error || !result.pin) {
+          setPersistenceError(result.error ?? 'Failed to add pin.')
+          return
+        }
+
+        const createdPin = result.pin
+        setPins((prev) => [...prev, createdPin])
+        setSelectedPin(createdPin)
+        return
+      }
+
       const newPin: Pin = {
         id: `pin-${Date.now()}`,
         tripId,
-        name: `Point (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
+        name,
         category: 'sightseeing',
         lat,
         lng,
@@ -116,7 +165,7 @@ export function TripMapContainer({
       setPins((prev) => [...prev, newPin])
       setSelectedPin(newPin)
     },
-    [currentUserEmail, tripId]
+    [currentUserEmail, shouldPersist, tripId]
   )
 
   /**
@@ -127,20 +176,69 @@ export function TripMapContainer({
   }, [])
 
   /**
-   * @brief Updates pin state when votes are cast or removed.
+   * @brief Replaces a pin in local state after a failed persistence attempt.
    */
-  const handleVoteChange = useCallback((updatedPin: Pin) => {
-    setPins((prev) => prev.map((p) => (p.id === updatedPin.id ? updatedPin : p)))
-    setSelectedPin(updatedPin)
+  const restorePin = useCallback((pin: Pin) => {
+    setPins((prev) => prev.map((p) => (p.id === pin.id ? pin : p)))
+    setSelectedPin((prev) => (prev?.id === pin.id ? pin : prev))
   }, [])
 
   /**
-   * @brief Handles confirming or unconfirming a pin.
+   * @brief Updates pin state when votes are cast or removed, persisting them when possible.
    */
-  const handleConfirmToggle = useCallback((updatedPin: Pin) => {
-    setPins((prev) => prev.map((p) => (p.id === updatedPin.id ? updatedPin : p)))
-    setSelectedPin(updatedPin)
-  }, [])
+  const handleVoteChange = useCallback(
+    (updatedPin: Pin) => {
+      const previousPin = pins.find((p) => p.id === updatedPin.id)
+      setPins((prev) => prev.map((p) => (p.id === updatedPin.id ? updatedPin : p)))
+      setSelectedPin(updatedPin)
+
+      if (!shouldPersist || updatedPin.isConfirmed) return
+
+      void togglePinVoteAction(
+        updatedPin.tripId,
+        updatedPin.id,
+        updatedPin.date
+      )
+        .then((result) => {
+          if (!result.error) return
+          setPersistenceError(result.error)
+          if (previousPin) restorePin(previousPin)
+        })
+        .catch((error) => {
+          console.error('Failed to persist pin vote:', error)
+          setPersistenceError('Failed to save your vote.')
+          if (previousPin) restorePin(previousPin)
+        })
+    },
+    [pins, restorePin, shouldPersist]
+  )
+
+  /**
+   * @brief Handles confirming or unconfirming a pin and persists the change to the trip.
+   */
+  const handleConfirmToggle = useCallback(
+    (updatedPin: Pin) => {
+      const previousPin = pins.find((p) => p.id === updatedPin.id)
+      setPins((prev) => prev.map((p) => (p.id === updatedPin.id ? updatedPin : p)))
+      setSelectedPin(updatedPin)
+
+      if (!shouldPersist) return
+
+      const action = updatedPin.isConfirmed ? confirmPinAction : revertPinAction
+      void action(updatedPin.tripId, updatedPin.id)
+        .then((result) => {
+          if (!result.error) return
+          setPersistenceError(result.error)
+          if (previousPin) restorePin(previousPin)
+        })
+        .catch((error) => {
+          console.error('Failed to persist pin confirmation:', error)
+          setPersistenceError('Failed to update the itinerary.')
+          if (previousPin) restorePin(previousPin)
+        })
+    },
+    [pins, restorePin, shouldPersist]
+  )
 
   /**
    * @brief Selects a confirmed pin from the confirmed list, flying to it on the map.
@@ -153,11 +251,12 @@ export function TripMapContainer({
   /**
    * @brief Reverts a confirmed spot back to proposed state.
    */
-  const handleRevertPin = useCallback((pinToRevert: Pin) => {
-    const updated: Pin = { ...pinToRevert, isConfirmed: false }
-    setPins((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
-    setSelectedPin((prev) => (prev?.id === updated.id ? updated : prev))
-  }, [])
+  const handleRevertPin = useCallback(
+    (pinToRevert: Pin) => {
+      handleConfirmToggle({ ...pinToRevert, isConfirmed: false })
+    },
+    [handleConfirmToggle]
+  )
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-950">
@@ -250,6 +349,25 @@ export function TripMapContainer({
           </form>
         </div>
       </header>
+
+      {persistenceError && (
+        <div
+          role="alert"
+          data-testid="pin-persistence-error"
+          className="absolute top-20 left-1/2 z-[870] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-xs font-medium text-red-800 shadow-lg"
+        >
+          <span>{persistenceError}</span>
+          <button
+            type="button"
+            data-testid="dismiss-persistence-error"
+            onClick={() => setPersistenceError(null)}
+            className="rounded-full px-1.5 py-0.5 text-red-500 hover:bg-red-100 hover:text-red-700"
+            aria-label="Dismiss error"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Floating Member Trips Card */}
       <TripsCard

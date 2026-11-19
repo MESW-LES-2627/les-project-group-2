@@ -3,7 +3,7 @@ import { connection } from 'next/server'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { TripMapContainer } from '@/components/map/TripMapContainer'
-import { DEFAULT_PORTUGAL_PINS } from '@/services/pin-storage'
+import { getTripPins } from '@/app/trips/actions/get-trip-pins'
 
 /**
  * @file app/trips/[id]/map/page.tsx
@@ -62,6 +62,7 @@ async function TripMapContent({ params }: TripMapPageProps) {
 
   const isOrganizer = Boolean(trip && trip.organizer_id === user.id)
   const userEmail = user.email ?? 'member@planit.app'
+  const initialPins = await getTripPins(id)
   let currentUsername: string | undefined
   let currentUserAvatar: string | null = null
 
@@ -89,7 +90,7 @@ async function TripMapContent({ params }: TripMapPageProps) {
         currentUsername={currentUsername}
         currentUserAvatar={currentUserAvatar}
         cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
-        initialPins={DEFAULT_PORTUGAL_PINS}
+        initialPins={initialPins}
         isOrganizer={isOrganizer}
       />
     </main>

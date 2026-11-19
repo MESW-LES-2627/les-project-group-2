@@ -66,13 +66,14 @@ export async function confirmPinAction(
     return { error: auth.error }
   }
 
-  const { error } = await auth.supabase
+  const { data, error } = await auth.supabase
     .from('pins')
     .update({ is_confirmed: true })
     .eq('id', pinId)
     .eq('trip_id', tripId)
+    .select('id')
 
-  if (error) {
+  if (error || !data || data.length === 0) {
     console.error('Error confirming pin:', error)
     return { error: 'Failed to confirm pin.' }
   }
@@ -101,13 +102,14 @@ export async function revertPinAction(
     return { error: auth.error }
   }
 
-  const { error } = await auth.supabase
+  const { data, error } = await auth.supabase
     .from('pins')
     .update({ is_confirmed: false })
     .eq('id', pinId)
     .eq('trip_id', tripId)
+    .select('id')
 
-  if (error) {
+  if (error || !data || data.length === 0) {
     console.error('Error reverting pin:', error)
     return { error: 'Failed to revert pin.' }
   }
