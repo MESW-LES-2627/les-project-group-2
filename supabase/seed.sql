@@ -1,0 +1,6 @@
+-- Seed data applied by `supabase db reset` (see the [db.seed] block in
+-- supabase/config.toml).
+--
+-- Intentionally empty: local data stays disposable and deterministic. Add
+-- insert statements here only when a feature needs reproducible demo data,
+-- and never put credentials or production records in this file.
