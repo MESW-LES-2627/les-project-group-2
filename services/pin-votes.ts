@@ -23,7 +23,7 @@ export function toggleVoteOnPin(
   voter: VoterIdentity,
   targetDate?: string
 ): Pin {
-  if (!voter.email) return pin
+  if (!voter.email || pin.isConfirmed) return pin
 
   const effectiveDate = targetDate || pin.date
   const currentVotes = pin.votes ? [...pin.votes] : []

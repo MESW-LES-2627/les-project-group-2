@@ -118,12 +118,36 @@ export async function togglePinVoteAction(
     return { error: 'Authentication required.' }
   }
 
-  const { data: existingVote, error: queryError } = await findExistingVote(
-    supabase,
-    pinId,
-    user.id,
-    targetDate
-  )
+  const userEmail = user.email || 'anonymous@planit.app'
+
+  // Check if pin is confirmed (voting is closed on confirmed pins)
+  const { data: pinRecord, error: pinError } = await supabase
+    .from('pins')
+    .select('is_confirmed')
+    .eq('id', pinId)
+    .maybeSingle()
+
+  if (pinError) {
+    console.error('Error checking pin status:', pinError)
+    return { error: 'Failed to verify pin status.' }
+  }
+
+  if (pinRecord?.is_confirmed) {
+    return { error: 'Voting is closed because this pin has been confirmed.' }
+  }
+
+  // Query existing vote for this user, pin, and targetDate
+  let query = supabase
+    .from('pin_votes')
+    .select('id')
+    .eq('pin_id', pinId)
+    .eq('user_id', user.id)
+
+  if (targetDate) {
+    query = query.eq('trip_date', targetDate)
+  }
+
+  const { data: existingVote, error: queryError } = await query.maybeSingle()
 
   if (queryError) {
     console.error('Error querying pin vote:', queryError)

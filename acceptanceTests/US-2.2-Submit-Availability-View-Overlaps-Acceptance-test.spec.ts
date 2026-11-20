@@ -90,6 +90,7 @@ test.describe('US-2.2: Submit Availability & View Overlaps', () => {
       user: { id: 'm-1', email: 'member@planit.app' },
       profile: { username: 'Alice' },
       trips: [
+or
         {
           id: 'trip-avail',
           name: 'Availability Trip',

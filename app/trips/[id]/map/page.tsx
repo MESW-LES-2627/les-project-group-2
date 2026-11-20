@@ -3,7 +3,7 @@ import { connection } from 'next/server'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { TripMapContainer } from '@/components/map/TripMapContainer'
-import { DEFAULT_PORTUGAL_PINS } from '@/services/pin-storage'
+import { getTripPins } from '@/app/trips/actions/get-trip-pins'
 
 /**
  * @file app/trips/[id]/map/page.tsx
@@ -70,7 +70,7 @@ async function TripMapContent({ params }: TripMapPageProps) {
 
   const { data: trip, error: tripError } = await supabase
     .from('trips')
-    .select('id')
+    .select('id, organizer_id')
     .eq('id', id)
     .maybeSingle()
 
@@ -83,18 +83,38 @@ async function TripMapContent({ params }: TripMapPageProps) {
     redirect('/dashboard')
   }
 
+  const isOrganizer = Boolean(trip && trip.organizer_id === user.id)
   const userEmail = user.email ?? 'member@planit.app'
-  const profile = await fetchUserProfile(supabase, user.id)
-  const cartoApiKey = process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY
+  const initialPins = await getTripPins(id)
+  let currentUsername: string | undefined
+  let currentUserAvatar: string | null = null
+
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username, avatar_url')
+      .eq('id', user.id)
+      .single()
+
+    if (profile) {
+      currentUsername = profile.username ?? undefined
+      currentUserAvatar = profile.avatar_url ?? null
+    }
+  } catch {
+    // Keep the map usable when profile data is unavailable.
+  }
 
   return (
     <main className="w-screen h-screen overflow-hidden">
       <TripMapContainer
+        tripId={id}
+        currentUserId={user.id}
         currentUserEmail={userEmail}
-        currentUsername={profile.username}
-        currentUserAvatar={profile.avatarUrl}
-        cartoApiKey={cartoApiKey}
-        initialPins={DEFAULT_PORTUGAL_PINS}
+        currentUsername={currentUsername}
+        currentUserAvatar={currentUserAvatar}
+        cartoApiKey={process.env.NEXT_PUBLIC_CARTO_API_KEY || process.env.CARTO_API_KEY}
+        initialPins={initialPins}
+        isOrganizer={isOrganizer}
       />
     </main>
   )

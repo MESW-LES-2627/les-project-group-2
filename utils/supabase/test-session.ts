@@ -113,17 +113,11 @@ export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?
     from(table: string) {
       const query: Record<string, unknown> = {
         _filters: {} as Record<string, unknown>,
-        select: (_fields?: string) => query,
+        select: () => query,
         eq: (col: string, val: unknown) => {
           ;(query._filters as Record<string, unknown>)[col] = val
           return query
         },
-        neq: (_col: string, _val: unknown) => query,
-        in: (_col: string, _vals: unknown[]) => query,
-        is: (_col: string, _val: unknown) => query,
-        order: (_col?: string) => query,
-        range: (_from?: number, _to?: number) => query,
-        limit: (_limit?: number) => query,
         single: async () => {
           const filters = query._filters as Record<string, unknown>
           if (table === 'profiles') {
@@ -293,7 +287,7 @@ export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?
       return query
     },
     storage: {
-      from(_bucket: string) {
+      from() {
         return {
           upload: async () => ({ data: { path: 'avatar.png' }, error: null }),
           getPublicUrl: () => ({ data: { publicUrl: '/avatar.png' } }),

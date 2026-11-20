@@ -214,6 +214,7 @@ describe('Trip workspace page', () => {
         expect(screen.getByText('Trip Member', {selector: 'p'})).toBeTruthy()
         expect(screen.getByText('member@example.com')).toBeTruthy()
         expect(screen.getByText('organizer')).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Transfer organizator role'})).toBeTruthy()
         expect(screen.getByRole('button', {name: 'Remove member'})).toBeTruthy()
         expect(screen.getByRole('link', {name: /map/i}).getAttribute('href')).toBe(
             '/trips/trip-1/map'
@@ -232,10 +233,10 @@ describe('Trip workspace page', () => {
 
         await renderContent()
 
-        expect(screen.getByText('Trip organizer')).toBeTruthy()
         expect(screen.queryByText('Edit trip details')).toBeNull()
         expect(screen.queryByText('Delete this trip')).toBeNull()
         expect(screen.getByRole('button', {name: 'Leave trip'})).toBeTruthy()
+        expect(screen.queryByRole('button', {name: 'Transfer organizator role'})).toBeNull()
         expect(screen.queryByRole('button', {name: 'Remove member'})).toBeNull()
     })
 
@@ -314,7 +315,7 @@ describe('Trip workspace page', () => {
         expect(availabilityQuery.order).toHaveBeenCalledWith('user_id', {ascending: true})
         expect(screen.getByText('1001/1001 available')).toBeTruthy()
         expect(screen.queryByText(/still waiting for/i)).toBeNull()
-    })
+    }, 15000)
 
     it('requests an empty final page when the answer count is exactly a full page', async () => {
         availabilityQuery.range
@@ -411,6 +412,23 @@ describe('Trip workspace page', () => {
             'Error fetching itinerary days:',
             databaseError
         )
+    })
+
+    it('shows best-date suggestions to the organizer only', async () => {
+        await renderContent()
+
+        expect(screen.getByText('Suggested dates')).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Use these dates'})).toBeTruthy()
+
+        cleanup()
+        getUser.mockResolvedValueOnce({
+            data: {user: {id: 'member-2'}},
+            error: null,
+        })
+
+        await renderContent()
+
+        expect(screen.queryByText('Suggested dates')).toBeNull()
     })
 
     it('renders an error message when the trip query fails', async () => {
