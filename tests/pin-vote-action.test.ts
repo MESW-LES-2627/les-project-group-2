@@ -28,6 +28,11 @@ type MockQuery = {
 
 describe('togglePinVoteAction Server Action', () => {
   let mockVotesQuery: MockQuery
+  let mockPinsQuery: {
+    select: ReturnType<typeof vi.fn>
+    eq: ReturnType<typeof vi.fn>
+    maybeSingle: ReturnType<typeof vi.fn>
+  }
   let mockGetUser: ReturnType<typeof vi.fn>
   let queryResultData: unknown
 
@@ -44,6 +49,12 @@ describe('togglePinVoteAction Server Action', () => {
       then: (resolve) => Promise.resolve(resolve({ data: queryResultData, error: null })),
     }
 
+    mockPinsQuery = {
+      select: vi.fn(() => mockPinsQuery),
+      eq: vi.fn(() => mockPinsQuery),
+      maybeSingle: vi.fn().mockResolvedValue({ data: { is_confirmed: false }, error: null }),
+    }
+
     mockGetUser = vi.fn().mockResolvedValue({
       data: { user: { id: 'user-voter-1', email: 'voter1@planit.app' } },
       error: null,
@@ -51,7 +62,7 @@ describe('togglePinVoteAction Server Action', () => {
 
     vi.mocked(supabaseServer.createClient).mockResolvedValue({
       auth: { getUser: mockGetUser },
-      from: vi.fn(() => mockVotesQuery),
+      from: vi.fn((table: string) => (table === 'pins' ? mockPinsQuery : mockVotesQuery)),
     } as unknown as SupabaseClient)
   })
 
@@ -71,6 +82,26 @@ describe('togglePinVoteAction Server Action', () => {
 
     const res = await togglePinVoteAction('trip-1', 'pin-1')
     expect(res).toEqual({ error: 'Authentication required.' })
+  })
+
+  it('returns error when checking pin status fails', async () => {
+    mockPinsQuery.maybeSingle.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Database error' },
+    })
+
+    const res = await togglePinVoteAction('trip-1', 'pin-1')
+    expect(res).toEqual({ error: 'Failed to verify pin status.' })
+  })
+
+  it('returns error when voting on a confirmed pin', async () => {
+    mockPinsQuery.maybeSingle.mockResolvedValueOnce({
+      data: { is_confirmed: true },
+      error: null,
+    })
+
+    const res = await togglePinVoteAction('trip-1', 'pin-1')
+    expect(res).toEqual({ error: 'Voting is closed because this pin has been confirmed.' })
   })
 
   it('returns error when querying vote fails', async () => {
@@ -128,7 +159,6 @@ describe('togglePinVoteAction Server Action', () => {
       data: { id: 'existing-vote-1' },
       error: null,
     })
-    // Mock delete failing
     mockVotesQuery.delete.mockReturnValueOnce({
       eq: vi.fn().mockResolvedValueOnce({ error: { message: 'Delete failed' } }),
     } as never)

@@ -1,8 +1,7 @@
-/* eslint-disable @next/next/no-img-element */
 'use client'
 
-import { useActionState, useRef, useState } from 'react'
-import { User, Upload, Lock, X } from 'lucide-react'
+import { useActionState } from 'react'
+import { User, Lock } from 'lucide-react'
 import { signup } from '../actions/auth'
 
 export function SignUpBox({
@@ -13,8 +12,6 @@ export function SignUpBox({
   redirectTo?: string
 }) {
   const [signup_res, signup_action, pending] = useActionState(signup, null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   return (
     <section className="w-full rounded-2xl bg-slate-800/70 p-8 shadow-2xl backdrop-blur-md sm:p-10">

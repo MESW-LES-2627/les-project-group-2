@@ -16,6 +16,103 @@ export interface VotePinResult {
   voters?: string[]
 }
 
+async function findExistingVote(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  pinId: string,
+  userId: string,
+  targetDate?: string
+) {
+  let query = supabase
+    .from('pin_votes')
+    .select('id')
+    .eq('pin_id', pinId)
+    .eq('user_id', userId)
+
+  if (targetDate) {
+    query = query.eq('trip_date', targetDate)
+  }
+
+  return await query.maybeSingle()
+}
+
+async function applyVoteToggle(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  existingVoteId: string | null,
+  pinId: string,
+  user: { id: string; email?: string | null },
+  targetDate?: string
+): Promise<{ error?: string; voted?: boolean }> {
+  if (existingVoteId) {
+    const { error: deleteError } = await supabase
+      .from('pin_votes')
+      .delete()
+      .eq('id', existingVoteId)
+
+    if (deleteError) {
+      console.error('Error removing pin vote:', deleteError)
+      return { error: 'Failed to remove vote.' }
+    }
+    return { voted: false }
+  }
+
+  const userEmail = user.email ? user.email : 'anonymous@planit.app'
+  const { error: insertError } = await supabase.from('pin_votes').insert({
+    pin_id: pinId,
+    user_id: user.id,
+    user_email: userEmail,
+    trip_date: targetDate ? targetDate : null,
+  })
+
+  if (insertError) {
+    console.error('Error casting pin vote:', insertError)
+    return { error: 'Failed to cast vote.' }
+  }
+  return { voted: true }
+}
+
+async function fetchPinVoters(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  pinId: string,
+  targetDate?: string
+): Promise<string[]> {
+  let countQuery = supabase
+    .from('pin_votes')
+    .select('user_email')
+    .eq('pin_id', pinId)
+
+  if (targetDate) {
+    countQuery = countQuery.eq('trip_date', targetDate)
+  }
+
+  const { data: allVotes } = await countQuery
+  if (!allVotes) {
+    return []
+  }
+  return allVotes.map((v) => v.user_email)
+}
+
+async function checkPinConfirmed(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  pinId: string
+): Promise<string | null> {
+  const { data: pinRecord, error: pinError } = await supabase
+    .from('pins')
+    .select('is_confirmed')
+    .eq('id', pinId)
+    .maybeSingle()
+
+  if (pinError) {
+    console.error('Error checking pin status:', pinError)
+    return 'Failed to verify pin status.'
+  }
+
+  if (pinRecord?.is_confirmed) {
+    return 'Voting is closed because this pin has been confirmed.'
+  }
+
+  return null
+}
+
 /**
  * @brief Server action to toggle a vote on a proposed pin.
  * Enforces authentication, date scoping, and idempotency (prevents duplicate votes).
@@ -43,72 +140,42 @@ export async function togglePinVoteAction(
     return { error: 'Authentication required.' }
   }
 
-  const userEmail = user.email || 'anonymous@planit.app'
-
-  // Query existing vote for this user, pin, and targetDate
-  let query = supabase
-    .from('pin_votes')
-    .select('id')
-    .eq('pin_id', pinId)
-    .eq('user_id', user.id)
-
-  if (targetDate) {
-    query = query.eq('trip_date', targetDate)
+  const confirmError = await checkPinConfirmed(supabase, pinId)
+  if (confirmError) {
+    return { error: confirmError }
   }
 
-  const { data: existingVote, error: queryError } = await query.maybeSingle()
+  const { data: existingVote, error: queryError } = await findExistingVote(
+    supabase,
+    pinId,
+    user.id,
+    targetDate
+  )
 
   if (queryError) {
     console.error('Error querying pin vote:', queryError)
     return { error: 'Failed to query vote status.' }
   }
 
-  let voted = false
-  if (existingVote) {
-    // Remove vote (AC 1)
-    const { error: deleteError } = await supabase
-      .from('pin_votes')
-      .delete()
-      .eq('id', existingVote.id)
+  const existingVoteId = existingVote ? existingVote.id : null
+  const toggleRes = await applyVoteToggle(
+    supabase,
+    existingVoteId,
+    pinId,
+    user,
+    targetDate
+  )
 
-    if (deleteError) {
-      console.error('Error removing pin vote:', deleteError)
-      return { error: 'Failed to remove vote.' }
-    }
-    voted = false
-  } else {
-    // Insert new vote (AC 1 & AC 2)
-    const { error: insertError } = await supabase.from('pin_votes').insert({
-      pin_id: pinId,
-      user_id: user.id,
-      user_email: userEmail,
-      trip_date: targetDate || null,
-    })
-
-    if (insertError) {
-      console.error('Error casting pin vote:', insertError)
-      return { error: 'Failed to cast vote.' }
-    }
-    voted = true
+  if (toggleRes.error) {
+    return { error: toggleRes.error }
   }
 
-  // Fetch updated votes for this pin and date
-  let countQuery = supabase
-    .from('pin_votes')
-    .select('user_email')
-    .eq('pin_id', pinId)
-
-  if (targetDate) {
-    countQuery = countQuery.eq('trip_date', targetDate)
-  }
-
-  const { data: allVotes } = await countQuery
-  const voters = (allVotes || []).map((v) => v.user_email)
+  const voters = await fetchPinVoters(supabase, pinId, targetDate)
 
   revalidatePath(`/trips/${tripId}/map`)
   return {
     success: true,
-    voted,
+    voted: toggleRes.voted,
     voteCount: voters.length,
     voters,
   }
