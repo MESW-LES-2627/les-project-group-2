@@ -24,14 +24,11 @@ suite that covers every merged story.
 | Work | Pull Request | Status | Notes |
 | :--- | :--- | :--- | :--- |
 | **Browser-level Playwright acceptance suite** | [PR #75](https://github.com/MESW-LES-2627/les-project-group-2/pull/75) | **Merged** | Adds 51 browser tests in 16 spec files covering every merged story, adapts the three previously unadapted map/search specs, extends the test-session mock to pins and votes, gates the test-session cookie out of production, fixes the production build, and makes `npm test` run Vitest plus Playwright. |
-| **Migration guards and clean-database validation** | [PR #78](https://github.com/MESW-LES-2627/les-project-group-2/pull/78) | **Ready for review** | Adds a `Migration Guard` job (immutable, ordered, uniquely versioned migrations), a `Database` job (clean rebuild plus pgTAP), a `Build` job, and verify-migrations/dry-run steps in deploy. All five checks are green; it still needs an approving review. |
+| **Migration guards and clean-database validation** | [PR #78](https://github.com/MESW-LES-2627/les-project-group-2/pull/78) | **Merged** | Adds a `Migration Guard` job (immutable, ordered, uniquely versioned migrations), a `Database` job (clean rebuild plus pgTAP), a `Build` job, and verify-migrations/dry-run steps in deploy. All five checks are green on the merge commit. |
 
 ## Work in Review
 
-These items were open when this claim was updated. They are **not** part of the
-verified staging snapshot and should be merged or moved to the next iteration
-before the `iter-2` tag is created.
-
-| Story / Task | Issue | Pull Request | Status | Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| **Infrastructure: Migration Guards & Clean Database Validation** | — | [PR #78](https://github.com/MESW-LES-2627/les-project-group-2/pull/78) | **Ready for review** | Rejects edited, deleted, renamed, duplicated or out-of-order migrations on pull requests; rebuilds the schema from all migrations and runs the pgTAP suite in CI; adds a build job and verifies migrations before deploy. Remaining step: approving review and enabling the new checks as required checks. |
+No Iteration 2 story or close-out item remains open at the time of writing. The
+only follow-up is a repository setting: enable `Migration Guard`, `Database` and
+`Build` as required checks on `staging` and `main` so the new gates block merges
+as intended.

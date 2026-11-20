@@ -23,9 +23,11 @@
   the component-only acceptance tests with Playwright tests that drive Chromium
   through the actual pages, with deterministic in-memory data and no seeded
   database.
-- **Delivery stayed automated.** The staging pipeline built the application,
-  applied migrations and deployed every merge in this increment; the final
-  snapshot passed both Checks and Deploy.
+- **Delivery stayed automated and is now guarded.** The staging pipeline built
+  the application, applied migrations and deployed every merge in this
+  increment; the final snapshot passed both Checks and Deploy. PR #78 added
+  `Migration Guard`, `Database` and `Build` jobs, so an edited migration, an
+  invalid clean rebuild, or a compile/type error now fails before merge.
 - **Review caught two high-risk problems before they shipped.** The Playwright
   test-session cookie was originally honoured in every environment (an
   authentication bypass) and the acceptance branch broke `next build` while CI
@@ -39,15 +41,15 @@
   staging. PR #81 re-targeted the same commit to `staging` and fixed it. Child
   PRs must be merged before their parent branch, and the base branch must be
   checked before merging.
-- **CI did not run the production build.** PR #80 passed lint and tests while
-  `next build` failed on a type error, and the acceptance branch failed on
-  unadapted test specs. PR #78 adds a `Build` job; until it merges, a green PR
-  does not prove the application compiles.
-- **Migration ordering still depends on an escape hatch.**
+- **CI did not run the production build until the close-out.** PR #80 passed
+  lint and tests while `next build` failed on a type error, and the acceptance
+  branch failed on unadapted test specs. PR #78 added a `Build` job; the gate is
+  now in place, but the gap existed for most of the increment.
+- **Migration ordering needed an escape hatch until the close-out.**
   `20261107000000_add_pin_confirmation.sql` reached `staging` after
-  `20261109100000_lock_trip_dates.sql`, so the deploy relies on
-  `supabase db push --include-all`. PR #78 proposes rejecting this at review
-  time and rebuilding a clean database before merge.
+  `20261109100000_lock_trip_dates.sql`, so the deploy relied on
+  `supabase db push --include-all`. PR #78 now rejects this at review time and
+  rebuilds a clean database before merge.
 - **Already-applied migrations must not be edited.** An open branch changed a
   migration that is already on staging. The correct fix is always a new
   migration; the guard in PR #78 enforces it.
@@ -66,9 +68,8 @@
 
 ## Proposed Improvements
 
-1. Merge the migration guard (PR #78) and enable `Migration Guard`, `Database`,
-   `Build`, `Lint and Format` and `Test` as required checks on `staging` and
-   `main` before starting Iteration 3.
+1. Enable `Migration Guard`, `Database`, `Build`, `Lint and Format` and `Test`
+   as required checks on `staging` and `main` before starting Iteration 3.
 2. Enforce child-before-parent merge order and make the base branch part of the
    PR checklist; never merge a story into another feature branch after that
    branch has reached `staging`.

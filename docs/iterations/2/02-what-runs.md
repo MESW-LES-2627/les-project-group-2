@@ -161,3 +161,24 @@ Next.js application.
 - **Maintained separately:** the Vitest acceptance tests under `tests/` remain
   for component-level checks, while `acceptanceTests/*.spec.ts` is the
   browser-level suite.
+
+---
+
+## 7. Migration Safety and CI Gates
+
+PR [#78](https://github.com/MESW-LES-2627/les-project-group-2/pull/78) added the
+database and build safety gates that the previous iteration lacked.
+
+- **Migration Guard:** rejects pull requests that edit, delete or rename an
+  applied migration, duplicate a version, use a malformed filename, or add a
+  migration older than the newest one on the base branch.
+- **Database:** starts a disposable Supabase stack, rebuilds the schema from
+  every migration with `db reset --no-seed`, and runs the pgTAP suite.
+- **Build:** runs `npm run build` on every PR, so compile and type errors fail
+  before merge instead of in the staging deploy.
+- **Deploy safety:** the deploy workflow runs the same clean-database
+  verification, builds the application, dry-runs `supabase db push`, and only
+  then applies the migrations. Deployments use a non-cancelling concurrency
+  group so a migration is never interrupted.
+- **Rules:** the migration rules are documented in `CONTRIBUTING.md` and
+  enforced by `scripts/check-migrations.sh`.

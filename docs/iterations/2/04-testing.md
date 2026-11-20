@@ -34,7 +34,7 @@ npx supabase test db
 
 ## Current Results
 
-Verified on the staging snapshot [`f8933872`](https://github.com/MESW-LES-2627/les-project-group-2/commit/f8933872c4cd4a8a143ce7628bdaa6db99d10f58):
+Verified on the staging snapshot [`2638f842`](https://github.com/MESW-LES-2627/les-project-group-2/commit/2638f842c20735bd2ae53148e4390768f795ae8d):
 
 | Check | Result |
 | :--- | :--- |
@@ -48,9 +48,11 @@ Verified on the staging snapshot [`f8933872`](https://github.com/MESW-LES-2627/l
 | **Branch coverage** | 83.47% |
 | **Function coverage** | 86.77% |
 | **Lint** | 0 errors, 0 warnings |
-| **Production build** | `npm run build` passes; PR #78 adds it as a CI check |
-| **Staging Checks** | Green ([run 44734211579](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44734211579)) |
-| **Staging deploy** | Green ([run 44734211485](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44734211485)) |
+| **Migration Guard** | Pass |
+| **Database** | Pass (clean rebuild + pgTAP) |
+| **Build** | Pass (`npm run build`) |
+| **Staging Checks** | Green ([run 44736383635](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44736383635)) |
+| **Staging deploy** | Green ([run 44736383459](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44736383459)) |
 
 The Definition of Done requires more than 90% line coverage; the snapshot meets
 that gate at 90.49%. The margin is thin because this increment added substantial
@@ -110,9 +112,11 @@ component-level flows, alongside the unit and component tests.
 - The US-2.3 lock/unlock functions are exercised by the acceptance tests
   through the Supabase test session, and the US-1.6 organizer transfer was
   additionally validated against the local Supabase stack during review.
-- PR [#78](https://github.com/MESW-LES-2627/les-project-group-2/pull/78) adds a
-  `Database` CI job that rebuilds a clean database from every migration and runs
-  the pgTAP suite on every PR. It is not merged into this snapshot yet.
+- The `Database` CI job rebuilds a clean database from every migration and runs
+  the pgTAP suite on every PR, and the deploy workflow repeats that verification
+  before applying migrations.
+- The `Migration Guard` job rejects edited, deleted, renamed, duplicated or
+  out-of-order migrations before merge.
 - A manual pass against the local Supabase stack is still recommended before the
   `iter-2` tag, especially for RLS policies that the test session does not
   reproduce.

@@ -48,11 +48,10 @@
 
 | Item | Value |
 | :--- | :--- |
-| **Verified staging snapshot** | [`f8933872`](https://github.com/MESW-LES-2627/les-project-group-2/commit/f8933872c4cd4a8a143ce7628bdaa6db99d10f58) |
+| **Verified staging snapshot** | [`2638f842`](https://github.com/MESW-LES-2627/les-project-group-2/commit/2638f842c20735bd2ae53148e4390768f795ae8d) |
 | **User stories delivered** | US-1.6 · US-2.3 · US-2.4 · US-3.3 · US-3.5 |
-| **Quality work delivered** | Browser-level Playwright acceptance suite (PR [#75](https://github.com/MESW-LES-2627/les-project-group-2/pull/75)) |
-| **Ready for review** | Migration guards and clean-database validation (PR [#78](https://github.com/MESW-LES-2627/les-project-group-2/pull/78)) |
+| **Quality work delivered** | Browser-level Playwright acceptance suite (PR [#75](https://github.com/MESW-LES-2627/les-project-group-2/pull/75)) · migration guards and clean-database validation (PR [#78](https://github.com/MESW-LES-2627/les-project-group-2/pull/78)) |
 | **Application tests** | 563 passing tests across 84 files (512 Vitest + 51 Playwright) |
 | **Line coverage** | 90.49% (Vitest) |
 | **Lint** | 0 errors, 0 warnings |
-| **Staging pipeline** | [Checks](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44734211579) and [deploy](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44734211485) green for `f8933872` |
+| **Staging pipeline** | [Checks](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44736383635) and [deploy](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44736383459) green for `2638f842` |
