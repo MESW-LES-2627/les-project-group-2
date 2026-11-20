@@ -212,25 +212,6 @@ describe('Trip member actions', () => {
             expect(navigation.redirect).toHaveBeenCalledWith('/trips/trip-1')
         })
 
-        it('falls back to table updates when rpc is not a function', async () => {
-            vi.mocked(supabaseServer.createClient).mockResolvedValueOnce({
-                auth: {getUser},
-                from,
-            } as never)
-            membershipQuery.maybeSingle.mockResolvedValueOnce({
-                data: {role: 'member'},
-                error: null,
-            })
-
-            const result = await promoteToOrganizer('trip-1', 'member-2')
-
-            expect(result).toEqual({success: true})
-            expect(membershipQuery.update).toHaveBeenCalledWith({role: 'member'})
-            expect(membershipQuery.update).toHaveBeenCalledWith({role: 'organizer'})
-            expect(tripQuery.update).toHaveBeenCalledWith({organizer_id: 'member-2'})
-            expect(nextCache.revalidatePath).toHaveBeenCalledWith('/trips/trip-1')
-        })
-
         it('does not let a non-organizer promote a member', async () => {
             tripQuery.maybeSingle.mockResolvedValueOnce({
                 data: {organizer_id: 'other-user'},

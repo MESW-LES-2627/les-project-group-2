@@ -203,48 +203,14 @@ export async function promoteToOrganizer(
         throw new Error('Trip member not found.')
     }
 
-    if (typeof supabase.rpc === 'function') {
-        const {error: rpcError} = await supabase.rpc('promote_to_organizer', {
-            p_trip_id: tripId,
-            p_new_organizer_id: memberId,
-        })
+    const {error: rpcError} = await supabase.rpc('promote_to_organizer', {
+        p_trip_id: tripId,
+        p_new_organizer_id: memberId,
+    })
 
-        if (rpcError) {
-            console.error('Error promoting to organizer via RPC:', rpcError)
-            throw new Error(`Could not promote member to organizer: ${rpcError.message}`)
-        }
-    } else {
-        const {error: demoteError} = await supabase
-            .from('trip_members')
-            .update({role: 'member'})
-            .eq('trip_id', tripId)
-            .eq('user_id', user.id)
-
-        if (demoteError) {
-            console.error('Error demoting current organizer:', demoteError)
-            throw new Error(`Could not demote current organizer: ${demoteError.message}`)
-        }
-
-        const {error: promoteError} = await supabase
-            .from('trip_members')
-            .update({role: 'organizer'})
-            .eq('trip_id', tripId)
-            .eq('user_id', memberId)
-
-        if (promoteError) {
-            console.error('Error promoting member to organizer:', promoteError)
-            throw new Error(`Could not promote member: ${promoteError.message}`)
-        }
-
-        const {error: tripUpdateError} = await supabase
-            .from('trips')
-            .update({organizer_id: memberId})
-            .eq('id', tripId)
-
-        if (tripUpdateError) {
-            console.error('Error updating trip organizer:', tripUpdateError)
-            throw new Error(`Could not update trip organizer: ${tripUpdateError.message}`)
-        }
+    if (rpcError) {
+        console.error('Error promoting to organizer via RPC:', rpcError)
+        throw new Error(`Could not promote member to organizer: ${rpcError.message}`)
     }
 
     revalidatePath(`/trips/${tripId}`)
