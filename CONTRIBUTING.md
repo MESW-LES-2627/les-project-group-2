@@ -167,7 +167,7 @@ supabase test db
 - New migrations must have a timestamp newer than the newest migration on the target branch.
 - Add a `supabase/tests/*.test.sql` (pgTAP) test for every new policy, function or constraint.
 - CI rebuilds a disposable database from all migrations and runs those tests (`Migration Guard` and `Database` jobs).
-- Full rules and the deployment flow: [docs/database-deployments.md](docs/database-deployments.md).
+- The enforced rules are implemented by `scripts/check-migrations.sh` and the `Migration Guard` / `Database` CI jobs.
 
 ---
 
