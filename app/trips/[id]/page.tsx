@@ -11,6 +11,7 @@ import {InviteSettings} from './invite-settings'
 import {DateWindows} from './date-windows'
 import {AvailabilityCalendar} from './availability-calendar'
 import {LockDates} from './lock-dates'
+import {PromoteToOrganizerButton} from './promote-member-button'
 import type {DateWindow} from '@/utils/date-windows'
 import {buildAvailabilityCalendar, type AvailabilityRow} from '@/utils/availability'
 import {groupAvailableByDay} from '@/utils/best-dates'
@@ -40,6 +41,13 @@ const sections = [
         status: 'Coming soon',
     },
 ]
+
+function getOrganizerName(members: TripMember[]) {
+    return (
+        members.find((member) => member.role === 'organizer')?.display_name ??
+        'Trip organizer'
+    )
+}
 
 export default function TripWorkspacePage({
                                               params,
@@ -274,8 +282,11 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                             <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
                                 Organizer
                             </p>
-                            <p className="mt-1 font-semibold text-gray-800">
-                                {isOrganizer ? 'You' : 'Trip organizer'}
+                            <p
+                                data-testid="trip-organizer-name"
+                                className="mt-1 font-semibold text-gray-800"
+                            >
+                                {isOrganizer ? 'You' : getOrganizerName(tripMembers)}
                             </p>
                         </div>
                     </div>
@@ -409,20 +420,27 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                                     </span>
                                 </div>
                                 {isOrganizer && member.role === 'member' && (
-                                    <form action={removeTripMember}>
-                                        <input type="hidden" name="tripId" value={id}/>
-                                        <input
-                                            type="hidden"
-                                            name="memberId"
-                                            value={member.user_id}
+                                    <div className="flex items-center gap-4">
+                                        <PromoteToOrganizerButton
+                                            tripId={id}
+                                            memberId={member.user_id}
+                                            memberName={member.display_name}
                                         />
-                                        <button
-                                            type="submit"
-                                            className="text-sm font-semibold text-red-700 transition hover:text-red-900"
-                                        >
-                                            Remove member
-                                        </button>
-                                    </form>
+                                        <form action={removeTripMember}>
+                                            <input type="hidden" name="tripId" value={id}/>
+                                            <input
+                                                type="hidden"
+                                                name="memberId"
+                                                value={member.user_id}
+                                            />
+                                            <button
+                                                type="submit"
+                                                className="text-sm font-semibold text-red-700 transition hover:text-red-900"
+                                            >
+                                                Remove member
+                                            </button>
+                                        </form>
+                                    </div>
                                 )}
                             </li>
                         ))}
