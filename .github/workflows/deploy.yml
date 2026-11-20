@@ -98,6 +98,26 @@ jobs:
           supabase db push --dry-run "${args[@]}"
           supabase db push --yes "${args[@]}"
 
+      # The production database recorded migration 20261106150000, which was
+      # applied out-of-band and never committed to this repository. Because the
+      # remote history is ahead of the local migrations, `supabase db push`
+      # aborts before applying anything. Mark that version as reverted in the
+      # remote history so deployments can continue. This only touches the
+      # history table and is safe to repeat.
+      - name: Repair Production Migration History
+        if: github.ref == 'refs/heads/main'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${{ secrets.SUPABASE_DB_URL_PRODUCTION }}" ]; then
+            repair_args=(--db-url "${{ secrets.SUPABASE_DB_URL_PRODUCTION }}")
+          else
+            repair_args=(--project-ref "${{ secrets.SUPABASE_PROD_PROJECT_ID }}")
+          fi
+          supabase migration repair --status reverted 20261106150000 "${repair_args[@]}" \
+            || echo "::warning::Migration 20261106150000 is already absent from the remote history."
+
       # Production migrations (main branch)
       - name: Run Migrations (Production)
         if: github.ref == 'refs/heads/main'
