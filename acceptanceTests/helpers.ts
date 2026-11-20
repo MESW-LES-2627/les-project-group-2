@@ -17,3 +17,34 @@ export async function setTestSession(context: BrowserContext, session: PlanitTes
 export async function clearTestSession(context: BrowserContext) {
   await context.clearCookies()
 }
+
+type TestPin = NonNullable<PlanitTestSession['pins']>[number]
+type TestPinVote = NonNullable<PlanitTestSession['pinVotes']>[number]
+
+export function makePin(overrides: Partial<TestPin> = {}): TestPin {
+  return {
+    id: 'pin-1',
+    trip_id: 'trip-301',
+    name: 'Torre de Belém',
+    description: 'Historical monument',
+    category: 'sightseeing',
+    lat: 38.6916,
+    lng: -9.216,
+    proposed_by: 'traveler@planit.app',
+    created_at: '2026-11-01T00:00:00Z',
+    is_confirmed: false,
+    ...overrides,
+  }
+}
+
+export function makeVote(overrides: Partial<TestPinVote> = {}): TestPinVote {
+  return {
+    id: 'vote-1',
+    pin_id: 'pin-1',
+    user_id: 'voter-1',
+    user_email: 'voter@planit.app',
+    created_at: '2026-11-01T00:00:00Z',
+    ...overrides,
+  }
+}
+

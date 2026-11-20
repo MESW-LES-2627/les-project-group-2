@@ -43,7 +43,31 @@ export interface PlanitTestSession {
     status?: string
     choice?: string
   }>
+  pins?: Array<{
+    id: string
+    trip_id: string
+    name: string
+    description?: string | null
+    date?: string | null
+    category?: string | null
+    lat: number
+    lng: number
+    proposed_by: string
+    created_at?: string | null
+    is_confirmed?: boolean | null
+  }>
+  pinVotes?: Array<{
+    id: string
+    pin_id: string
+    user_id: string
+    user_email: string
+    trip_date?: string | null
+    created_at?: string | null
+  }>
 }
+
+type SessionPin = NonNullable<PlanitTestSession['pins']>[number]
+type SessionPinVote = NonNullable<PlanitTestSession['pinVotes']>[number]
 
 type CookieSetter = {
   set: (name: string, value: string, options?: { path?: string }) => void
@@ -141,22 +165,175 @@ function handleTripMembersMaybeSingle(
   return { data: found ?? null, error: null }
 }
 
-function handleInsert(table: string, data: unknown, session: PlanitTestSession) {
-  if (typeof data !== 'object' || data === null) return
+type InsertHandler = (
+  data: Record<string, unknown>,
+  session: PlanitTestSession
+) => unknown
 
-  if (table === 'trips' && Array.isArray(session.trips)) {
-    session.trips.push(data as (typeof session.trips)[0])
-    return
+function insertTrip(data: Record<string, unknown>, session: PlanitTestSession) {
+  const trip = {
+    id: `trip-${(session.trips?.length ?? 0) + 1}`,
+    invite_code: `CODE${(session.trips?.length ?? 0) + 1}`,
+    state: 'Planning',
+    created_at: new Date().toISOString(),
+    ...data,
+  } as SessionTrip
+  session.trips = [...(session.trips ?? []), trip]
+  if (trip.organizer_id) {
+    session.members = [
+      {
+        user_id: trip.organizer_id,
+        email: session.user?.email,
+        display_name: session.profile?.username ?? 'Organizer',
+        role: 'organizer',
+      },
+    ]
   }
-  if (table === 'trip_date_windows') {
-    session.windows = session.windows ?? []
-    session.windows.push({ id: `w-${Date.now()}`, ...(data as Record<string, string>) } as (typeof session.windows)[0])
-    return
+  return trip
+}
+
+function insertWindow(data: Record<string, unknown>, session: PlanitTestSession) {
+  session.windows = session.windows ?? []
+  session.windows.push({ id: `w-${Date.now()}`, ...data } as (typeof session.windows)[0])
+  return session.windows[session.windows.length - 1]
+}
+
+function insertMember(data: Record<string, unknown>, session: PlanitTestSession) {
+  session.members = session.members ?? []
+  session.members.push({ display_name: 'Member', ...data } as (typeof session.members)[0])
+  return session.members[session.members.length - 1]
+}
+
+function insertPin(data: Record<string, unknown>, session: PlanitTestSession) {
+  const pin = {
+    id: `pin-${(session.pins?.length ?? 0) + 1}-${Date.now()}`,
+    created_at: new Date().toISOString(),
+    is_confirmed: false,
+    ...data,
+  } as SessionPin
+  session.pins = [...(session.pins ?? []), pin]
+  return pin
+}
+
+function insertPinVote(data: Record<string, unknown>, session: PlanitTestSession) {
+  const vote = {
+    id: `vote-${(session.pinVotes?.length ?? 0) + 1}-${Date.now()}`,
+    created_at: new Date().toISOString(),
+    ...data,
+  } as SessionPinVote
+  session.pinVotes = [...(session.pinVotes ?? []), vote]
+  return vote
+}
+
+const insertHandlers: Record<string, InsertHandler> = {
+  trips: insertTrip,
+  trip_date_windows: insertWindow,
+  trip_members: insertMember,
+  pins: insertPin,
+  pin_votes: insertPinVote,
+}
+
+function handleInsert(table: string, data: unknown, session: PlanitTestSession): unknown {
+  if (typeof data !== 'object' || data === null) return null
+  const handler = insertHandlers[table]
+  return handler ? handler(data as Record<string, unknown>, session) : null
+}
+
+function matchesFilters(row: Record<string, unknown>, filters: Record<string, unknown>) {
+  return Object.entries(filters).every(
+    ([key, value]) => value === undefined || row[key] === value
+  )
+}
+
+function findPins(session: PlanitTestSession, filters: Record<string, unknown>) {
+  return (session.pins ?? []).filter((pin) =>
+    matchesFilters(pin as unknown as Record<string, unknown>, filters)
+  )
+}
+
+function findPinVotes(session: PlanitTestSession, filters: Record<string, unknown>) {
+  return (session.pinVotes ?? []).filter((vote) =>
+    matchesFilters(vote as unknown as Record<string, unknown>, filters)
+  )
+}
+
+function withPinVotes(session: PlanitTestSession, pin: SessionPin) {
+  return { ...pin, pin_votes: findPinVotes(session, { pin_id: pin.id }) }
+}
+
+function applyPinUpdate(
+  table: string,
+  filters: Record<string, unknown>,
+  data: unknown,
+  session: PlanitTestSession
+) {
+  if (typeof data !== 'object' || data === null) return
+  if (table === 'pins') {
+    findPins(session, filters).forEach((pin) => Object.assign(pin, data))
+  } else if (table === 'pin_votes') {
+    findPinVotes(session, filters).forEach((vote) => Object.assign(vote, data))
   }
-  if (table === 'trip_members') {
-    session.members = session.members ?? []
-    session.members.push({ display_name: 'Member', ...(data as Record<string, string>) } as (typeof session.members)[0])
+}
+
+function applyPendingUpdate(
+  table: string,
+  query: Record<string, unknown>,
+  session: PlanitTestSession,
+  syncCookie: () => void
+) {
+  if (!query._updateData) return
+  applyPinUpdate(
+    table,
+    query._filters as Record<string, unknown>,
+    query._updateData,
+    session
+  )
+  query._updateData = undefined
+  syncCookie()
+}
+
+type DeleteHandler = (
+  filters: Record<string, unknown>,
+  session: PlanitTestSession
+) => void
+
+function deleteMember(filters: Record<string, unknown>, session: PlanitTestSession) {
+  const memberId = filters['user_id'] as string | undefined
+  if (memberId && session.members) {
+    session.members = session.members.filter((m) => m.user_id !== memberId)
   }
+}
+
+function deleteWindow(filters: Record<string, unknown>, session: PlanitTestSession) {
+  const windowId = filters['id'] as string | undefined
+  if (windowId && session.windows) {
+    session.windows = session.windows.filter((w) => w.id !== windowId)
+  }
+}
+
+function deletePin(filters: Record<string, unknown>, session: PlanitTestSession) {
+  const removed = findPins(session, filters)
+  const removedIds = new Set(removed.map((pin) => pin.id))
+  session.pins = (session.pins ?? []).filter((pin) => !removedIds.has(pin.id))
+  session.pinVotes = (session.pinVotes ?? []).filter(
+    (vote) => !removedIds.has(vote.pin_id)
+  )
+}
+
+function deleteVote(filters: Record<string, unknown>, session: PlanitTestSession) {
+  const voteId = filters['id'] as string | undefined
+  const pinId = filters['pin_id'] as string | undefined
+  session.pinVotes = (session.pinVotes ?? []).filter(
+    (vote) =>
+      !((voteId && vote.id === voteId) || (pinId && vote.pin_id === pinId))
+  )
+}
+
+const deleteHandlers: Record<string, DeleteHandler> = {
+  trip_members: deleteMember,
+  trip_date_windows: deleteWindow,
+  pins: deletePin,
+  pin_votes: deleteVote,
 }
 
 function handleDeleteAction(
@@ -164,17 +341,8 @@ function handleDeleteAction(
   filters: Record<string, unknown>,
   session: PlanitTestSession
 ) {
-  if (table === 'trip_members') {
-    const memberId = filters['user_id'] as string | undefined
-    if (memberId && session.members) {
-      session.members = session.members.filter((m) => m.user_id !== memberId)
-    }
-  } else if (table === 'trip_date_windows') {
-    const windowId = filters['id'] as string | undefined
-    if (windowId && session.windows) {
-      session.windows = session.windows.filter((w) => w.id !== windowId)
-    }
-  }
+  const handler = deleteHandlers[table]
+  if (handler) handler(filters, session)
 }
 
 function mapTripDates(session: PlanitTestSession, t: SessionTrip) {
@@ -212,6 +380,8 @@ function getTableData(table: string, session: PlanitTestSession, userId?: string
     trip_date_windows: session.windows,
     trip_itinerary_days: session.itineraryDays,
     trip_availability: session.availabilities,
+    pins: (session.pins ?? []).map((pin) => withPinVotes(session, pin)),
+    pin_votes: session.pinVotes,
   }
   return map[table] ?? []
 }
@@ -273,6 +443,26 @@ function handleRpcPromoteToOrganizer(
     syncCookie()
   }
   return { data: null, error: null }
+}
+
+function applyImmediateUpdate(
+  table: string,
+  data: unknown,
+  query: Record<string, unknown>,
+  session: PlanitTestSession
+) {
+  if (typeof data !== 'object' || data === null) return
+
+  if (table === 'profiles') {
+    session.profile = { ...(session.profile ?? {}), ...(data as Record<string, string>) }
+    return
+  }
+
+  if (table !== 'trips') return
+  const filters = query._filters as Record<string, unknown>
+  const tripId = filters['id'] as string | undefined
+  const trip = session.trips?.find((t) => !tripId || t.id === tripId)
+  if (trip) Object.assign(trip, data)
 }
 
 export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?: CookieSetter): SupabaseClient {
@@ -351,42 +541,54 @@ export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?
         range: () => query,
         single: async () => {
           const filters = query._filters as Record<string, unknown>
+          applyPendingUpdate(table, query, session, syncCookie)
           const handlers: Record<string, () => { data: unknown; error: null }> = {
             profiles: () => handleProfilesSingle(session, user),
-            trips: () => handleTripsSingle(session, filters),
+            trips: () => {
+              const inserted = query._inserted as SessionTrip | undefined
+              return { data: inserted ?? handleTripsSingle(session, filters).data, error: null }
+            },
             trip_members: () => handleTripMembersSingle(session, filters),
             trip_date_windows: () => handleTripDateWindowsQuery(session, filters, query._action, syncCookie),
+            pins: () => {
+              const inserted = query._inserted as SessionPin | undefined
+              const found = inserted ?? findPins(session, filters)[0] ?? null
+              return { data: found ? withPinVotes(session, found) : null, error: null }
+            },
           }
           const handler = handlers[table]
           return handler ? handler() : { data: null, error: null }
         },
         maybeSingle: async () => {
           const filters = query._filters as Record<string, unknown>
+          applyPendingUpdate(table, query, session, syncCookie)
           const handlers: Record<string, () => { data: unknown; error: null }> = {
             trips: () => handleTripsMaybeSingle(session, filters),
             trip_members: () => handleTripMembersMaybeSingle(session, filters, query._action, syncCookie),
             trip_date_windows: () => handleTripDateWindowsQuery(session, filters, query._action, syncCookie),
+            pins: () => {
+              const found = findPins(session, filters)[0] ?? null
+              return { data: found ? withPinVotes(session, found) : null, error: null }
+            },
+            pin_votes: () => ({
+              data: findPinVotes(session, filters)[0] ?? null,
+              error: null,
+            }),
           }
           const handler = handlers[table]
           return handler ? handler() : { data: null, error: null }
         },
         insert: (data: unknown) => {
-          handleInsert(table, data, session)
+          query._inserted = handleInsert(table, data, session)
           syncCookie()
           return query
         },
         update: (data: unknown) => {
-          if (table === 'profiles' && typeof data === 'object' && data !== null) {
-            session.profile = { ...(session.profile ?? {}), ...(data as Record<string, string>) }
+          if (table === 'pins' || table === 'pin_votes') {
+            query._updateData = data
+            return query
           }
-          if (table === 'trips' && typeof data === 'object' && data !== null) {
-            const filters = query._filters as Record<string, unknown>
-            const tripId = filters['id'] as string | undefined
-            const trip = session.trips?.find((t) => !tripId || t.id === tripId)
-            if (trip) {
-              Object.assign(trip, data)
-            }
-          }
+          applyImmediateUpdate(table, data, query, session)
           syncCookie()
           return query
         },
@@ -403,11 +605,19 @@ export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?
           return query
         },
         then: (onfulfilled?: (res: { data: unknown; error: unknown }) => unknown) => {
+          const filters = query._filters as Record<string, unknown>
           if (query._action === 'delete') {
-            handleDeleteAction(table, query._filters as Record<string, unknown>, session)
+            handleDeleteAction(table, filters, session)
             syncCookie()
           }
-          const result = { data: getTableData(table, session, user?.id), error: null }
+          applyPendingUpdate(table, query, session, syncCookie)
+          let data = getTableData(table, session, user?.id)
+          if (table === 'pins') {
+            data = findPins(session, filters).map((pin) => withPinVotes(session, pin))
+          } else if (table === 'pin_votes') {
+            data = findPinVotes(session, filters)
+          }
+          const result = { data, error: null }
           return Promise.resolve(onfulfilled ? onfulfilled(result) : result)
         },
       }
