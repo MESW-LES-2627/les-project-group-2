@@ -34,12 +34,47 @@ interface LeafletMapProps {
 }
 
 /**
- * @brief Generates an HTML divIcon marker for a given pin category.
+ * @brief Generates an HTML divIcon marker for a given pin category and confirmation status.
  * @param category The pin category.
+ * @param isConfirmed Whether the pin is confirmed to the itinerary.
  * @return Leaflet DivIcon instance.
  */
-function createPinIcon(category: Pin['category']): L.DivIcon {
+function createPinIcon(category: Pin['category'], isConfirmed = false): L.DivIcon {
   const color = getCategoryColor(category)
+  if (isConfirmed) {
+    return L.divIcon({
+      className: 'custom-pin-marker confirmed-pin-marker',
+      html: `
+        <div style="
+          background-color: ${color};
+          width: 36px;
+          height: 36px;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 3px solid #fbbf24;
+          box-shadow: 0 0 12px rgba(251, 191, 36, 0.75), 0 4px 12px rgba(0,0,0,0.45);
+          cursor: pointer;
+          transition: transform 0.15s ease-in-out;
+        ">
+          <div style="
+            transform: rotate(45deg);
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: bold;
+            line-height: 1;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+          ">★</div>
+        </div>
+      `,
+      iconSize: [36, 36],
+      iconAnchor: [18, 36],
+      popupAnchor: [0, -36],
+    })
+  }
+
   return L.divIcon({
     className: 'custom-pin-marker',
     html: `
@@ -154,9 +189,10 @@ export default function LeafletMap({
     markersGroup.clearLayers()
 
     pins.forEach((pin) => {
+      const isConfirmed = Boolean(pin.isConfirmed)
       const marker = L.marker([pin.lat, pin.lng], {
-        icon: createPinIcon(pin.category),
-        title: pin.name,
+        icon: createPinIcon(pin.category, isConfirmed),
+        title: isConfirmed ? `★ ${pin.name} (Confirmed)` : pin.name,
       })
 
       marker.bindTooltip(pin.name, {
@@ -169,6 +205,7 @@ export default function LeafletMap({
       const voteCount = getPinVoteCount(pin)
       marker.bindPopup(`
         <div style="font-family: inherit; font-size: 13px; font-weight: 600; color: #0f172a; padding: 2px 4px;">
+          ${isConfirmed ? '<div style="font-size: 11px; color: #b45309; font-weight: 700; margin-bottom: 2px;">★ Confirmed Spot</div>' : ''}
           ${pin.name}
           ${voteCount > 0 ? `<div style="font-size: 11px; color: #475569; font-weight: 500; margin-top: 2px;">👍 ${voteCount} ${voteCount === 1 ? 'vote' : 'votes'}</div>` : ''}
         </div>

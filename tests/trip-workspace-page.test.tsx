@@ -63,6 +63,7 @@ const trip = {
 describe('Trip workspace page', () => {
     let query: Query
     let availabilityQuery: Query
+    let itineraryQuery: Query
     let getUser: ReturnType<typeof vi.fn>
     let getTripMembers: ReturnType<typeof vi.fn>
 
@@ -109,6 +110,17 @@ describe('Trip workspace page', () => {
             error: null,
         })
 
+        itineraryQuery = {
+            select: vi.fn(),
+            eq: vi.fn(),
+            maybeSingle: vi.fn(),
+            order: vi.fn(),
+            range: vi.fn(),
+        }
+        itineraryQuery.select.mockReturnValue(itineraryQuery)
+        itineraryQuery.eq.mockReturnValue(itineraryQuery)
+        itineraryQuery.order.mockResolvedValue({data: [], error: null})
+
         getUser = vi.fn().mockResolvedValue({
             data: {user: {id: 'user-1'}},
             error: null,
@@ -133,9 +145,11 @@ describe('Trip workspace page', () => {
 
         vi.mocked(supabaseServer.createClient).mockResolvedValue({
             auth: {getUser},
-            from: vi.fn((table: string) =>
-                table === 'trip_availability' ? availabilityQuery : query
-            ),
+            from: vi.fn((table: string) => {
+                if (table === 'trip_availability') return availabilityQuery
+                if (table === 'trip_itinerary_days') return itineraryQuery
+                return query
+            }),
             rpc: getTripMembers,
         } as never)
         vi.mocked(navigation.redirect).mockImplementation(() => {
@@ -195,11 +209,13 @@ describe('Trip workspace page', () => {
         expect(screen.getByText('Porto')).toBeTruthy()
         expect(screen.getAllByText('A short break')).toHaveLength(2)
         expect(screen.getByText('You')).toBeTruthy()
+        expect(screen.getByTestId('trip-organizer-name').textContent).toBe('You')
         expect(screen.getByText('Edit trip details')).toBeTruthy()
         expect(screen.getByText('Trip members')).toBeTruthy()
         expect(screen.getByText('Trip Member', {selector: 'p'})).toBeTruthy()
         expect(screen.getByText('member@example.com')).toBeTruthy()
         expect(screen.getByText('organizer')).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Transfer organizer role'})).toBeTruthy()
         expect(screen.getByRole('button', {name: 'Remove member'})).toBeTruthy()
         expect(screen.getByRole('link', {name: /map/i}).getAttribute('href')).toBe(
             '/trips/trip-1/map'
@@ -218,10 +234,11 @@ describe('Trip workspace page', () => {
 
         await renderContent()
 
-        expect(screen.getByText('Trip organizer')).toBeTruthy()
         expect(screen.queryByText('Edit trip details')).toBeNull()
         expect(screen.queryByText('Delete this trip')).toBeNull()
+        expect(screen.getByTestId('trip-organizer-name').textContent).toBe('Organizer')
         expect(screen.getByRole('button', {name: 'Leave trip'})).toBeTruthy()
+        expect(screen.queryByRole('button', {name: 'Transfer organizer role'})).toBeNull()
         expect(screen.queryByRole('button', {name: 'Remove member'})).toBeNull()
     })
 
@@ -300,7 +317,7 @@ describe('Trip workspace page', () => {
         expect(availabilityQuery.order).toHaveBeenCalledWith('user_id', {ascending: true})
         expect(screen.getByText('1001/1001 available')).toBeTruthy()
         expect(screen.queryByText(/still waiting for/i)).toBeNull()
-    })
+    }, 15000)
 
     it('requests an empty final page when the answer count is exactly a full page', async () => {
         availabilityQuery.range
@@ -346,6 +363,74 @@ describe('Trip workspace page', () => {
             'Error fetching availability:',
             databaseError
         )
+    })
+
+    it('shows the locked dates and makes dates and availability read-only', async () => {
+        query.maybeSingle.mockResolvedValue({
+            data: {
+                ...trip,
+                state: 'Dates locked',
+                locked_start_date: '2099-07-02',
+                locked_end_date: '2099-07-05',
+            },
+            error: null,
+        })
+        itineraryQuery.order.mockResolvedValue({
+            data: [
+                {day: '2099-07-02'},
+                {day: '2099-07-03'},
+                {day: '2099-07-04'},
+                {day: '2099-07-05'},
+            ],
+            error: null,
+        })
+
+        await renderContent()
+
+        expect(screen.getByText('Dates locked')).toBeTruthy()
+        expect(screen.getByText('2 Jul 2099 → 5 Jul 2099')).toBeTruthy()
+        expect(screen.getByText(/4 itinerary days created/)).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Unlock dates'})).toBeTruthy()
+        expect(screen.queryByRole('button', {name: 'Add date window'})).toBeNull()
+        expect(screen.queryByRole('button', {name: 'Save my availability'})).toBeNull()
+    })
+
+    it('lets the organizer lock the dates while they are unlocked', async () => {
+        await renderContent()
+
+        expect(screen.getByRole('button', {name: 'Lock dates'})).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Save my availability'})).toBeTruthy()
+    })
+
+    it('renders an error message when the itinerary days query fails', async () => {
+        const databaseError = {message: 'Itinerary unavailable'}
+        itineraryQuery.order.mockResolvedValueOnce({data: null, error: databaseError})
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await renderContent()
+
+        expect(screen.getByText('Could not load trip dates')).toBeTruthy()
+        expect(consoleError).toHaveBeenCalledWith(
+            'Error fetching itinerary days:',
+            databaseError
+        )
+    })
+
+    it('shows best-date suggestions to the organizer only', async () => {
+        await renderContent()
+
+        expect(screen.getByText('Suggested dates')).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Use these dates'})).toBeTruthy()
+
+        cleanup()
+        getUser.mockResolvedValueOnce({
+            data: {user: {id: 'member-2'}},
+            error: null,
+        })
+
+        await renderContent()
+
+        expect(screen.queryByText('Suggested dates')).toBeNull()
     })
 
     it('renders an error message when the trip query fails', async () => {

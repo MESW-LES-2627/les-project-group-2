@@ -9,6 +9,29 @@ export type UpdateProfileResult =
   | { success: true; username: string; avatarUrl: string | null; error?: never }
   | { success?: false; error: string; username?: never; avatarUrl?: never }
 
+async function uploadProfilePicture(
+  formData: FormData,
+  userId: string,
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<{ error?: string; url?: string | null }> {
+  const file = (formData.get('profile_pic') || formData.get('file')) as File | null
+  if (!file || file.size === 0 || !file.name) {
+    return {}
+  }
+
+  const uploadRes = await savePicture(formData, userId, 'profile_pics', supabase)
+  if (!uploadRes) {
+    return {}
+  }
+  if ('error' in uploadRes && uploadRes.error) {
+    return { error: uploadRes.error }
+  }
+  if ('url' in uploadRes && uploadRes.url) {
+    return { url: uploadRes.url }
+  }
+  return {}
+}
+
 export async function updateProfile(formData: FormData): Promise<UpdateProfileResult> {
   const supabase = await createClient()
   const {
@@ -24,24 +47,16 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     return { error: "Hey! You can't have an account with no username!" }
   }
 
-  let avatarUrl: string | null | undefined = undefined
-  const file = (formData.get('profile_pic') || formData.get('file')) as File | null
-
-  if (file && file.size > 0 && file.name) {
-    const uploadRes = await savePicture(formData, user.id, 'profile_pics', supabase)
-    if (uploadRes && 'error' in uploadRes && uploadRes.error) {
-      return { error: uploadRes.error }
-    }
-    if (uploadRes && 'url' in uploadRes && uploadRes.url) {
-      avatarUrl = uploadRes.url
-    }
+  const avatarResult = await uploadProfilePicture(formData, user.id, supabase)
+  if (avatarResult.error) {
+    return { error: avatarResult.error }
   }
 
   const updateData: { username: string; avatar_url?: string | null } = {
     username,
   }
-  if (avatarUrl !== undefined) {
-    updateData.avatar_url = avatarUrl
+  if (avatarResult.url !== undefined) {
+    updateData.avatar_url = avatarResult.url
   }
 
   const { error: profileError } = await supabase
@@ -55,7 +70,7 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
   return {
     success: true,
     username,
-    avatarUrl: avatarUrl !== undefined ? avatarUrl : null,
+    avatarUrl: avatarResult.url !== undefined ? avatarResult.url : null,
   }
 }
 

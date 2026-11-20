@@ -12,6 +12,7 @@ import { ChevronDown, ChevronUp, MapPin, X } from 'lucide-react'
 import {
   getUserMemberTrips,
   type UserMemberTrip,
+  type TripDateItem,
 } from '@/app/trips/actions/get-member-trips'
 import { formatEventDate } from '@/utils/date-formatter'
 
@@ -19,6 +20,146 @@ export interface TripsCardProps {
   isOpen: boolean
   onClose: () => void
   initialTrips?: UserMemberTrip[]
+}
+
+interface TripExpandedDetailsProps {
+  trip: UserMemberTrip
+}
+
+function TripExpandedDetails({ trip }: TripExpandedDetailsProps) {
+  const dates = trip.trip_dates ?? []
+  return (
+    <div
+      data-testid={`trip-details-${trip.id}`}
+      className="mt-3 pt-3 border-t border-white/10 space-y-2 text-xs text-slate-300"
+    >
+      <div>
+        <span className="text-slate-400 font-medium">Trip Name: </span>
+        <span className="text-white font-semibold">{trip.name}</span>
+      </div>
+
+      <div>
+        <span className="text-slate-400 font-medium">State: </span>
+        <span className="text-sky-300 font-medium capitalize">
+          {trip.state ? trip.state : 'Not specified'}
+        </span>
+      </div>
+
+      {trip.description && (
+        <p className="text-slate-300 italic pt-0.5">{trip.description}</p>
+      )}
+
+      <div className="pt-1.5">
+        <div className="font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px]">
+          Events & Dates:
+        </div>
+
+        {dates.length > 0 ? (
+          <ul className="space-y-2 border-l border-white/15 pl-3 mt-1">
+            {dates.map((item) => (
+              <li key={item.date_id} className="space-y-0.5">
+                <div className="font-medium text-sky-300">
+                  {item.formatted_date || formatEventDate(item.date_itself)}
+                </div>
+                <div className="text-slate-200">
+                  {item.event ? item.event : 'No description'}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="italic text-slate-400">Dates not set</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function getTripDateLabel(dates: TripDateItem[]): string {
+  if (dates.length === 0) return 'Dates not set'
+  return dates[0].formatted_date || formatEventDate(dates[0].date_itself)
+}
+
+interface TripItemCardProps {
+  trip: UserMemberTrip
+  isExpanded: boolean
+  onToggleExpanded: (id: string) => void
+  onNavigate: (id: string) => void
+}
+
+function TripItemCard({
+  trip,
+  isExpanded,
+  onToggleExpanded,
+  onNavigate,
+}: TripItemCardProps) {
+  const dates = trip.trip_dates ?? []
+  const dateLabel = getTripDateLabel(dates)
+  const stateLabel = trip.state ? trip.state : 'Planning'
+
+  return (
+    <div
+      data-testid={`trip-rectangle-${trip.id}`}
+      role="button"
+      tabIndex={0}
+      onClick={() => onNavigate(trip.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onNavigate(trip.id)
+        }
+      }}
+      className="group cursor-pointer rounded-xl border border-white/15 bg-slate-900/60 hover:bg-slate-900/90 hover:border-white/30 transition-all p-4 text-left"
+    >
+      {/* Header row of the trip rectangle */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold text-white text-base truncate group-hover:text-sky-300 transition-colors">
+            {trip.name}
+          </h3>
+
+          {trip.destination && (
+            <p className="text-xs text-slate-400 mt-0.5 truncate flex items-center gap-1">
+              <MapPin className="h-3 w-3 shrink-0 text-slate-400" />
+              <span>{trip.destination}</span>
+            </p>
+          )}
+
+          <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+            <span className="inline-block px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-800 border border-white/10 text-slate-300 capitalize">
+              {stateLabel}
+            </span>
+            <span className="text-[11px] text-slate-400">{dateLabel}</span>
+          </div>
+        </div>
+
+        {/* Expand / Collapse Button (Clicking here does NOT navigate) */}
+        <button
+          type="button"
+          data-testid={`trip-expand-btn-${trip.id}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleExpanded(trip.id)
+          }}
+          aria-label={
+            isExpanded
+              ? `Collapse ${trip.name} details`
+              : `Expand ${trip.name} details`
+          }
+          className="shrink-0 p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+        >
+          {isExpanded ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </button>
+      </div>
+
+      {/* Expanded Details Section */}
+      {isExpanded && <TripExpandedDetails trip={trip} />}
+    </div>
+  )
 }
 
 /**
@@ -164,127 +305,15 @@ export function TripsCard({ isOpen, onClose, initialTrips }: TripsCardProps) {
             <p>You are not associated with any trips as a member yet.</p>
           </div>
         ) : (
-          trips.map((trip) => {
-            const isExpanded = expandedTripIds.has(trip.id)
-            return (
-              <div
-                key={trip.id}
-                data-testid={`trip-rectangle-${trip.id}`}
-                role="button"
-                tabIndex={0}
-                onClick={() => navigateToTrip(trip.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    navigateToTrip(trip.id)
-                  }
-                }}
-                className="group cursor-pointer rounded-xl border border-white/15 bg-slate-900/60 hover:bg-slate-900/90 hover:border-white/30 transition-all p-4 text-left"
-              >
-                {/* Header row of the trip rectangle */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-white text-base truncate group-hover:text-sky-300 transition-colors">
-                      {trip.name}
-                    </h3>
-
-                    {trip.destination && (
-                      <p className="text-xs text-slate-400 mt-0.5 truncate flex items-center gap-1">
-                        <MapPin className="h-3 w-3 shrink-0 text-slate-400" />
-                        <span>{trip.destination}</span>
-                      </p>
-                    )}
-
-                    <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                      <span className="inline-block px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-800 border border-white/10 text-slate-300 capitalize">
-                        {trip.state || 'Planning'}
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        {trip.trip_dates && trip.trip_dates.length > 0
-                          ? formatEventDate(trip.trip_dates[0].date_itself)
-                          : 'Dates not set'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Expand / Collapse Button (Clicking here does NOT navigate) */}
-                  <button
-                    type="button"
-                    data-testid={`trip-expand-btn-${trip.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleTripExpanded(trip.id)
-                    }}
-                    aria-label={
-                      isExpanded
-                        ? `Collapse ${trip.name} details`
-                        : `Expand ${trip.name} details`
-                    }
-                    className="shrink-0 p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-                  >
-                    {isExpanded ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Expanded Details Section */}
-                {isExpanded && (
-                  <div
-                    data-testid={`trip-details-${trip.id}`}
-                    className="mt-3 pt-3 border-t border-white/10 space-y-2 text-xs text-slate-300"
-                  >
-                    <div>
-                      <span className="text-slate-400 font-medium">
-                        Trip Name:{' '}
-                      </span>
-                      <span className="text-white font-semibold">
-                        {trip.name}
-                      </span>
-                    </div>
-
-                    <div>
-                      <span className="text-slate-400 font-medium">State: </span>
-                      <span className="text-sky-300 font-medium capitalize">
-                        {trip.state || 'Not specified'}
-                      </span>
-                    </div>
-
-                    {trip.description && (
-                      <p className="text-slate-300 italic pt-0.5">
-                        {trip.description}
-                      </p>
-                    )}
-
-                    <div className="pt-1.5">
-                      <div className="font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px]">
-                        Events & Dates:
-                      </div>
-
-                      {trip.trip_dates && trip.trip_dates.length > 0 ? (
-                        <ul className="space-y-2 border-l border-white/15 pl-3 mt-1">
-                          {trip.trip_dates.map((item) => (
-                            <li key={item.date_id} className="space-y-0.5">
-                              <div className="font-medium text-sky-300">
-                                {formatEventDate(item.date_itself)}
-                              </div>
-                              <div className="text-slate-200">
-                                {item.event || 'No description'}
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="italic text-slate-400">Dates not set</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })
+          trips.map((trip) => (
+            <TripItemCard
+              key={trip.id}
+              trip={trip}
+              isExpanded={expandedTripIds.has(trip.id)}
+              onToggleExpanded={toggleTripExpanded}
+              onNavigate={navigateToTrip}
+            />
+          ))
         )}
       </div>
 
