@@ -62,6 +62,10 @@ pull-request and CI gates.
 
 ## Final Board
 
-The final board snapshot will be added here before the `iter-2` tag is created,
-following the same layout as the previous claims. The live board is the
-[GitHub Project board of the organisation](https://github.com/orgs/MESW-LES-2627/projects).
+The board at the end of Iteration 2, after the six delivered stories moved to
+Done. US-3.4 (Categorize Pins) and US-3.6 (Comment on a Pin) remain in Ready and
+are carried into Iteration 3.
+
+![Final board at the end of Iteration 2](final_board.png)
+
+The live board is the [GitHub Project board of the organisation](https://github.com/orgs/MESW-LES-2627/projects).

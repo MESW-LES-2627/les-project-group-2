@@ -1,5 +1,13 @@
 # Retrospective
 
+## Board at the Start of the Iteration
+
+The board before the six delivered stories moved to Done. It is the state this
+retrospective refers to when discussing the two Ready stories that were not
+delivered.
+
+![Board at the start of Iteration 2](initial_board.jpg)
+
 ## What went well
 
 - **Both decision loops are complete.** Candidate windows (US-2.1) and
