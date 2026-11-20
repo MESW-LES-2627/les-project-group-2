@@ -42,10 +42,11 @@ const sections = [
     },
 ]
 
-function getOrganizer(trips){
-  for(const mem of trips){
-    if (mem.role = 'organizer') return mem.display_name
-  }
+function getOrganizerName(members: TripMember[]) {
+    return (
+        members.find((member) => member.role === 'organizer')?.display_name ??
+        'Trip organizer'
+    )
 }
 
 export default function TripWorkspacePage({
@@ -281,8 +282,11 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                             <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
                                 Organizer
                             </p>
-                            <p className="mt-1 font-semibold text-gray-800">
-                                {isOrganizer ? 'You' : getOrganizer(tripMembers)}
+                            <p
+                                data-testid="trip-organizer-name"
+                                className="mt-1 font-semibold text-gray-800"
+                            >
+                                {isOrganizer ? 'You' : getOrganizerName(tripMembers)}
                             </p>
                         </div>
                     </div>
@@ -420,6 +424,7 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                                         <PromoteToOrganizerButton
                                             tripId={id}
                                             memberId={member.user_id}
+                                            memberName={member.display_name}
                                         />
                                         <form action={removeTripMember}>
                                             <input type="hidden" name="tripId" value={id}/>
