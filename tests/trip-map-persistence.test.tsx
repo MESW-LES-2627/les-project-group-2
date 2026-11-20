@@ -11,6 +11,7 @@ import { Pin } from '@/types/map'
 import { confirmPinAction, revertPinAction } from '@/app/trips/actions/pin-confirmation'
 import { createPinAction } from '@/app/trips/actions/create-pin'
 import { togglePinVoteAction } from '@/app/trips/actions/vote-pin'
+import { updatePinAction, deletePinAction } from '@/app/trips/actions/manage-pins'
 
 vi.mock('@/app/entry/actions/auth', () => ({
   logout: vi.fn(),
@@ -27,6 +28,11 @@ vi.mock('@/app/trips/actions/create-pin', () => ({
 
 vi.mock('@/app/trips/actions/vote-pin', () => ({
   togglePinVoteAction: vi.fn(),
+}))
+
+vi.mock('@/app/trips/actions/manage-pins', () => ({
+  updatePinAction: vi.fn(),
+  deletePinAction: vi.fn(),
 }))
 
 interface MockMapProps {
@@ -82,6 +88,8 @@ describe('TripMapContainer persistence', () => {
     vi.mocked(confirmPinAction).mockResolvedValue({ success: true })
     vi.mocked(revertPinAction).mockResolvedValue({ success: true })
     vi.mocked(togglePinVoteAction).mockResolvedValue({ success: true })
+    vi.mocked(updatePinAction).mockResolvedValue({ success: true })
+    vi.mocked(deletePinAction).mockResolvedValue({ success: true })
   })
 
   afterEach(() => {
@@ -172,6 +180,58 @@ describe('TripMapContainer persistence', () => {
     await waitFor(() => {
       expect(screen.getByTestId('pin-persistence-error').textContent).toContain('Not allowed.')
       expect(screen.getByTestId('marker-pin-1').getAttribute('data-confirmed')).toBe('false')
+    })
+  })
+
+  it('persists pin edits for real trips', async () => {
+    render(
+      <TripMapContainer
+        tripId="trip-1"
+        currentUserEmail="organizer@planit.app"
+        initialPins={[proposedPin]}
+        isOrganizer
+      />
+    )
+
+    await openPin()
+    fireEvent.click(screen.getByTestId('edit-pin-button'))
+    fireEvent.change(screen.getByTestId('edit-pin-name'), {
+      target: { value: 'Belém Tower' },
+    })
+    fireEvent.click(screen.getByTestId('save-edit-pin-button'))
+
+    expect(updatePinAction).toHaveBeenCalledWith('trip-1', 'pin-1', {
+      name: 'Belém Tower',
+      description: '',
+      category: 'sightseeing',
+      lat: 38.6916,
+      lng: -9.216,
+      date: '2026-11-15',
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('marker-pin-1').textContent).toBe('Belém Tower')
+    })
+  })
+
+  it('persists pin deletion and restores it when the action fails', async () => {
+    vi.mocked(deletePinAction).mockResolvedValue({ error: 'Not allowed.' })
+
+    render(
+      <TripMapContainer
+        tripId="trip-1"
+        currentUserEmail="organizer@planit.app"
+        initialPins={[proposedPin]}
+        isOrganizer
+      />
+    )
+
+    await openPin()
+    fireEvent.click(screen.getByTestId('delete-pin-button'))
+
+    expect(deletePinAction).toHaveBeenCalledWith('trip-1', 'pin-1')
+    await waitFor(() => {
+      expect(screen.getByTestId('pin-persistence-error').textContent).toContain('Not allowed.')
+      expect(screen.getByTestId('marker-pin-1')).toBeDefined()
     })
   })
 

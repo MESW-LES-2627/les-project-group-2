@@ -25,6 +25,29 @@ export interface CreatePinResult {
   pin?: Pin
 }
 
+function validatePinInput(tripId: string, input: CreatePinInput): string | null {
+  if (!tripId || !input?.name?.trim()) {
+    return 'Trip ID and pin name are required.'
+  }
+  if (!isValidCoordinate(input.lat, input.lng)) {
+    return 'Pin coordinates are invalid.'
+  }
+  return null
+}
+
+function buildPinInsertPayload(tripId: string, input: CreatePinInput, userEmail: string) {
+  return {
+    trip_id: tripId,
+    name: input.name.trim(),
+    description: input.description?.trim() || null,
+    date: input.date || null,
+    category: input.category,
+    lat: input.lat,
+    lng: input.lng,
+    proposed_by: userEmail,
+  }
+}
+
 /**
  * @brief Inserts a new proposed pin for a trip.
  * @param tripId The trip receiving the pin.
@@ -35,12 +58,9 @@ export async function createPinAction(
   tripId: string,
   input: CreatePinInput
 ): Promise<CreatePinResult> {
-  if (!tripId || !input?.name?.trim()) {
-    return { error: 'Trip ID and pin name are required.' }
-  }
-
-  if (!isValidCoordinate(input.lat, input.lng)) {
-    return { error: 'Pin coordinates are invalid.' }
+  const validationError = validatePinInput(tripId, input)
+  if (validationError) {
+    return { error: validationError }
   }
 
   const supabase = await createClient()
@@ -53,18 +73,11 @@ export async function createPinAction(
     return { error: 'Authentication required.' }
   }
 
+  const payload = buildPinInsertPayload(tripId, input, user.email ?? 'member@planit.app')
+
   const { data, error } = await supabase
     .from('pins')
-    .insert({
-      trip_id: tripId,
-      name: input.name.trim(),
-      description: input.description?.trim() || null,
-      date: input.date || null,
-      category: input.category,
-      lat: input.lat,
-      lng: input.lng,
-      proposed_by: user.email ?? 'member@planit.app',
-    })
+    .insert(payload)
     .select(
       'id, trip_id, name, description, date, category, lat, lng, proposed_by, created_at, is_confirmed'
     )
