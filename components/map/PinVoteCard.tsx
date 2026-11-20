@@ -30,6 +30,151 @@ interface PinVoteCardProps {
   onClose?: () => void
 }
 
+function PinVoteSection({
+  voteCount,
+  voters,
+  isConfirmed,
+  userHasVoted,
+  onToggleVote,
+}: {
+  voteCount: number
+  voters: string[]
+  isConfirmed: boolean
+  userHasVoted: boolean
+  onToggleVote: () => void
+}) {
+  const voteLabel = voteCount === 1 ? 'vote' : 'votes'
+  const votersText = voters.length > 0 ? `Voted by: ${voters.join(', ')}` : 'No votes yet'
+  const votersTitle = voters.length > 0 ? voters.join(', ') : 'No votes yet'
+
+  return (
+    <div className="mt-4 pt-3.5 border-t border-slate-100">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <span
+            data-testid="pin-vote-count"
+            className="text-sm font-bold text-slate-900"
+          >
+            {voteCount} {voteLabel}
+          </span>
+          <p
+            data-testid="pin-voters"
+            className="text-[11px] text-slate-500 truncate max-w-[170px]"
+            title={votersTitle}
+          >
+            {votersText}
+          </p>
+        </div>
+
+        {isConfirmed ? (
+          <span
+            data-testid="voting-closed-badge"
+            className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-500 border border-slate-200"
+          >
+            Voting closed
+          </span>
+        ) : (
+          <button
+            type="button"
+            data-testid="vote-pin-button"
+            onClick={onToggleVote}
+            className={`rounded-full px-4 py-2 text-xs font-semibold shadow-sm transition ${
+              userHasVoted
+                ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            {userHasVoted ? 'Remove vote' : 'Vote'}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PinActionButtons({
+  canEdit,
+  canDelete,
+  onEdit,
+  onDelete,
+}: {
+  canEdit: boolean
+  canDelete: boolean
+  onEdit?: () => void
+  onDelete?: () => void
+}) {
+  if (!canEdit && !canDelete) return null
+
+  return (
+    <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+      {canEdit && (
+        <button
+          type="button"
+          data-testid="edit-pin-button"
+          onClick={onEdit}
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
+          title="Edit pin details"
+        >
+          <Edit2 className="h-3 w-3" />
+          <span>Edit</span>
+        </button>
+      )}
+      {canDelete && (
+        <button
+          type="button"
+          data-testid="delete-pin-button"
+          onClick={onDelete}
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 transition"
+          title="Delete pin"
+        >
+          <Trash2 className="h-3 w-3" />
+          <span>Delete</span>
+        </button>
+      )}
+    </div>
+  )
+}
+
+function PinConfirmButton({
+  isOrganizer,
+  isConfirmed,
+  onConfirm,
+  onRevert,
+}: {
+  isOrganizer: boolean
+  isConfirmed: boolean
+  onConfirm: () => void
+  onRevert: () => void
+}) {
+  if (!isOrganizer) return null
+
+  return (
+    <div className="mt-3.5 pt-3 border-t border-slate-100">
+      {!isConfirmed ? (
+        <button
+          type="button"
+          data-testid="confirm-pin-button"
+          onClick={onConfirm}
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition"
+        >
+          <span>★</span>
+          <span>Confirm Spot</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          data-testid="revert-pin-button"
+          onClick={onRevert}
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 border border-slate-300 transition"
+        >
+          <span>↺</span>
+          <span>Revert to Proposed</span>
+        </button>
+      )}
+    </div>
+  )
+}
+
 /**
  * @brief In-place pin details, voting, edit, delete, and confirmation card rendered over the map workspace.
  * @param props Component properties containing target pin and callbacks.
@@ -169,104 +314,29 @@ export function PinVoteCard({
       )}
 
       {/* Voting Section */}
-      <div className="mt-4 pt-3.5 border-t border-slate-100">
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <span
-              data-testid="pin-vote-count"
-              className="text-sm font-bold text-slate-900"
-            >
-              {voteCount} {voteCount === 1 ? 'vote' : 'votes'}
-            </span>
-            <p
-              data-testid="pin-voters"
-              className="text-[11px] text-slate-500 truncate max-w-[170px]"
-              title={voters.length > 0 ? voters.join(', ') : 'No votes yet'}
-            >
-              {voters.length > 0 ? `Voted by: ${voters.join(', ')}` : 'No votes yet'}
-            </p>
-          </div>
-
-          {isConfirmed ? (
-            <span
-              data-testid="voting-closed-badge"
-              className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-500 border border-slate-200"
-            >
-              Voting closed
-            </span>
-          ) : (
-            <button
-              type="button"
-              data-testid="vote-pin-button"
-              onClick={handleToggleVote}
-              className={`rounded-full px-4 py-2 text-xs font-semibold shadow-sm transition ${
-                userHasVoted
-                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              {userHasVoted ? 'Remove vote' : 'Vote'}
-            </button>
-          )}
-        </div>
-      </div>
+      <PinVoteSection
+        voteCount={voteCount}
+        voters={voters}
+        isConfirmed={isConfirmed}
+        userHasVoted={userHasVoted}
+        onToggleVote={handleToggleVote}
+      />
 
       {/* Edit and Delete Actions */}
-      {(canEdit || canDelete) && (
-        <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-          {canEdit && (
-            <button
-              type="button"
-              data-testid="edit-pin-button"
-              onClick={() => onEdit?.(currentPin)}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
-              title="Edit pin details"
-            >
-              <Edit2 className="h-3 w-3" />
-              <span>Edit</span>
-            </button>
-          )}
-          {canDelete && (
-            <button
-              type="button"
-              data-testid="delete-pin-button"
-              onClick={() => onDelete?.(currentPin.id)}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 transition"
-              title="Delete pin"
-            >
-              <Trash2 className="h-3 w-3" />
-              <span>Delete</span>
-            </button>
-          )}
-        </div>
-      )}
+      <PinActionButtons
+        canEdit={canEdit}
+        canDelete={canDelete}
+        onEdit={() => onEdit?.(currentPin)}
+        onDelete={() => onDelete?.(currentPin.id)}
+      />
 
       {/* Organizer Action: Confirm or Revert Pin */}
-      {isOrganizer && (
-        <div className="mt-3.5 pt-3 border-t border-slate-100">
-          {!isConfirmed ? (
-            <button
-              type="button"
-              data-testid="confirm-pin-button"
-              onClick={handleConfirm}
-              className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition"
-            >
-              <span>★</span>
-              <span>Confirm Spot</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              data-testid="revert-pin-button"
-              onClick={handleRevert}
-              className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 border border-slate-300 transition"
-            >
-              <span>↺</span>
-              <span>Revert to Proposed</span>
-            </button>
-          )}
-        </div>
-      )}
+      <PinConfirmButton
+        isOrganizer={isOrganizer}
+        isConfirmed={isConfirmed}
+        onConfirm={handleConfirm}
+        onRevert={handleRevert}
+      />
     </div>
   )
 }

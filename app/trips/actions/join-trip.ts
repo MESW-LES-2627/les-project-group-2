@@ -15,6 +15,50 @@ export type JoinTripResult = {
   tripId?: string
 }
 
+async function getAuthenticatedUser(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  trimmed: string
+) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    redirect(`/entry?redirectTo=${encodeURIComponent(`/trips/join?code=${trimmed}`)}`)
+  }
+  return user
+}
+
+async function ensureTripMembership(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tripId: string,
+  userId: string,
+  organizerId: string
+): Promise<{ error?: string }> {
+  const { data: existingMember } = await supabase
+    .from('trip_members')
+    .select('id')
+    .eq('trip_id', tripId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!existingMember) {
+    const { error: joinError } = await supabase.from('trip_members').insert({
+      trip_id: tripId,
+      user_id: userId,
+      role: organizerId === userId ? 'organizer' : 'member',
+    })
+
+    if (joinError) {
+      console.error('Error joining trip:', joinError)
+      return { error: 'Failed to join trip. Please try again.' }
+    }
+  }
+
+  return {}
+}
+
 /**
  * @brief Joins a trip using an invite code.
  * @param code The trip invite code.
@@ -27,14 +71,7 @@ export async function joinTripByCode(code: string): Promise<JoinTripResult> {
   }
 
   const supabase = await createClient()
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    redirect(`/entry?redirectTo=${encodeURIComponent(`/trips/join?code=${trimmed}`)}`)
-  }
+  const user = await getAuthenticatedUser(supabase, trimmed)
 
   // Find trip by invite code
   const { data: trip, error: tripError } = await supabase
@@ -47,25 +84,9 @@ export async function joinTripByCode(code: string): Promise<JoinTripResult> {
     return { error: 'Invalid or revoked invite code.' }
   }
 
-  // Check if user is already a member
-  const { data: existingMember } = await supabase
-    .from('trip_members')
-    .select('id')
-    .eq('trip_id', trip.id)
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  if (!existingMember) {
-    const { error: joinError } = await supabase.from('trip_members').insert({
-      trip_id: trip.id,
-      user_id: user.id,
-      role: trip.organizer_id === user.id ? 'organizer' : 'member',
-    })
-
-    if (joinError) {
-      console.error('Error joining trip:', joinError)
-      return { error: 'Failed to join trip. Please try again.' }
-    }
+  const membershipResult = await ensureTripMembership(supabase, trip.id, user.id, trip.organizer_id)
+  if (membershipResult.error) {
+    return { error: membershipResult.error }
   }
 
   try {

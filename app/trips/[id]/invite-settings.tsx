@@ -118,6 +118,7 @@ export function InviteSettings({ tripId, initialInviteCode }: InviteSettingsProp
             </span>
             <span
               data-testid="displayed-invite-url"
+              suppressHydrationWarning
               className="block truncate font-mono text-xs text-gray-600"
               title={inviteUrl}
             >

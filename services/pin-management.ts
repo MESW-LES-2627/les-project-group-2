@@ -56,6 +56,27 @@ export function canDeletePin(
   return pin.proposedBy === userEmail || isOrganizer
 }
 
+function resolveUpdatedCoordinates(p: Pin, data: PinUpdateData): { lat: number; lng: number } {
+  const lat = data.lat !== undefined && isValidCoordinate(data.lat, p.lng) ? data.lat : p.lat
+  const lng = data.lng !== undefined && isValidCoordinate(p.lat, data.lng) ? data.lng : p.lng
+  return { lat, lng }
+}
+
+function updatePinFields(p: Pin, data: PinUpdateData): Pin {
+  const { lat, lng } = resolveUpdatedCoordinates(p, data)
+  const trimmedName = data.name?.trim()
+
+  return {
+    ...p,
+    name: trimmedName || p.name,
+    description: data.description !== undefined ? data.description : p.description,
+    category: data.category || p.category,
+    lat,
+    lng,
+    date: data.date !== undefined ? data.date : p.date,
+  }
+}
+
 /**
  * @brief Updates a pin's fields in a list of pins.
  * @param pins Array of pins.
@@ -68,22 +89,7 @@ export function applyPinUpdate(
   pinId: string,
   data: PinUpdateData
 ): Pin[] {
-  return pins.map((p) => {
-    if (p.id !== pinId) return p
-
-    const updatedLat = data.lat !== undefined && isValidCoordinate(data.lat, p.lng) ? data.lat : p.lat
-    const updatedLng = data.lng !== undefined && isValidCoordinate(p.lat, data.lng) ? data.lng : p.lng
-
-    return {
-      ...p,
-      name: data.name !== undefined && data.name.trim() ? data.name.trim() : p.name,
-      description: data.description !== undefined ? data.description : p.description,
-      category: data.category || p.category,
-      lat: updatedLat,
-      lng: updatedLng,
-      date: data.date !== undefined ? data.date : p.date,
-    }
-  })
+  return pins.map((p) => (p.id === pinId ? updatePinFields(p, data) : p))
 }
 
 /**

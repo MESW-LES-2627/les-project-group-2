@@ -4,7 +4,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
-export async function updateTrip(formData: FormData) {
+function parseTripFormData(formData: FormData) {
     const id = String(formData.get('id') ?? '').trim()
     const name = String(formData.get('name') ?? '').trim()
     const destination = String(
@@ -18,8 +18,10 @@ export async function updateTrip(formData: FormData) {
         throw new Error('Trip ID and name are required.')
     }
 
-    const supabase = await createClient()
+    return { id, name, destination, description }
+}
 
+async function requireAuthenticatedUser(supabase: Awaited<ReturnType<typeof createClient>>) {
     const {
         data: { user },
         error: userError,
@@ -28,6 +30,14 @@ export async function updateTrip(formData: FormData) {
     if (userError || !user) {
         redirect('/entry')
     }
+
+    return user
+}
+
+export async function updateTrip(formData: FormData) {
+    const { id, name, destination, description } = parseTripFormData(formData)
+    const supabase = await createClient()
+    const user = await requireAuthenticatedUser(supabase)
 
     const { data, error } = await supabase
         .from('trips')
