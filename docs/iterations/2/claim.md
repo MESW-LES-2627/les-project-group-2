@@ -2,7 +2,7 @@
 
 > **Group 2 — PlanIt!**
 >
-> **Increment / Milestone:** Iteration 2 — Official Trip Dates, Best-Date Suggestions, and Committing Winning Pins to the Itinerary.
+> **Increment / Milestone:** Iteration 2 — Official Trip Dates, Best-Date Suggestions, Committing Winning Pins, Member Roles, and Browser-Level Acceptance Tests.
 >
 > This claim is split into focused documents so that each part can be read on its own.
 > The main structure of the Iteration 0 and Iteration 1 claims is unchanged; the
@@ -48,10 +48,11 @@
 
 | Item | Value |
 | :--- | :--- |
-| **Verified staging snapshot** | [`e4a09f14`](https://github.com/MESW-LES-2627/les-project-group-2/commit/e4a09f147698eb099612efc43b6ce907e55d8a22) |
-| **User stories delivered** | US-2.3 · US-2.4 · US-3.3 |
-| **User stories in review** | US-3.5 (PR [#74](https://github.com/MESW-LES-2627/les-project-group-2/pull/74)) |
-| **Application tests** | 428 passing tests across 57 files |
-| **Line coverage** | 93.96% |
-| **Lint** | 0 errors (6 pre-existing warnings) |
-| **Staging pipeline** | [Checks](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44637057318) and [deploy](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44637057541) green for `e4a09f14` |
+| **Verified staging snapshot** | [`f8933872`](https://github.com/MESW-LES-2627/les-project-group-2/commit/f8933872c4cd4a8a143ce7628bdaa6db99d10f58) |
+| **User stories delivered** | US-1.6 · US-2.3 · US-2.4 · US-3.3 · US-3.5 |
+| **Quality work delivered** | Browser-level Playwright acceptance suite (PR [#75](https://github.com/MESW-LES-2627/les-project-group-2/pull/75)) |
+| **Ready for review** | Migration guards and clean-database validation (PR [#78](https://github.com/MESW-LES-2627/les-project-group-2/pull/78)) |
+| **Application tests** | 563 passing tests across 84 files (512 Vitest + 51 Playwright) |
+| **Line coverage** | 90.49% (Vitest) |
+| **Lint** | 0 errors, 0 warnings |
+| **Staging pipeline** | [Checks](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44734211579) and [deploy](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44734211485) green for `f8933872` |

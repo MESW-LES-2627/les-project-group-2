@@ -6,10 +6,14 @@ closes the two decision loops of the product:
 - **Dates:** candidate windows and member availability now produce ranked
   suggestions, an official locked range, and one itinerary day per day.
 - **Places:** proposed pins and votes now produce confirmed spots that belong to
-  the official itinerary.
+  the official itinerary, and members can correct or withdraw their own pins.
+- **People:** the organizer role can be transferred safely, with the old
+  organizer demoted to member in the same database transaction.
+- **Quality:** every merged story is exercised through a browser-level Playwright
+  suite, in addition to the Vitest unit and component tests.
 
 Only stories merged into the verified staging snapshot are listed here. Work
-that was still in review is tracked separately in
+that is still in review is tracked separately in
 [Stories in this increment](03-stories.md#work-in-review).
 
 ---
@@ -87,3 +91,73 @@ The group's preferred places can now become official itinerary spots.
   failures are surfaced in the map interface instead of silently ignored.
 
 **Database:** [`20261107000000_add_pin_confirmation.sql`](https://github.com/MESW-LES-2627/les-project-group-2/blob/staging/supabase/migrations/20261107000000_add_pin_confirmation.sql) and [`20261119120000_allow_trip_organizers_to_update_pins.sql`](https://github.com/MESW-LES-2627/les-project-group-2/blob/staging/supabase/migrations/20261119120000_allow_trip_organizers_to_update_pins.sql)
+
+---
+
+## 4. Edit/Delete Own Pin Proposal (US-3.5)
+
+Members can now correct or withdraw the places they proposed.
+
+- **Editing:** the proposer can change a proposed pin's name, description,
+  category and coordinates from the pin card. Organizers can edit any proposed
+  pin, while a confirmed pin can only be edited by an organizer.
+- **Deleting:** the proposer or the organizer can delete a proposed pin. Deleting
+  a pin also removes its votes, so no orphan votes remain.
+- **Confirmed pins are protected:** once a pin is confirmed, only the organizer
+  can edit or delete it; the member-facing card hides both actions.
+- **Persistence:** edits and deletions go through `updatePinAction` and
+  `deletePinAction`, which re-check the caller, the trip and the pin before
+  touching the database. Failures are surfaced in the map UI and the local state
+  is rolled back.
+- **Database policy:** creators may update and delete their own proposed pins
+  under RLS, while organizers keep the broader permissions required by US-3.3.
+
+**Database:** [`20261119130000_allow_creators_to_manage_own_pins.sql`](https://github.com/MESW-LES-2627/les-project-group-2/blob/staging/supabase/migrations/20261119130000_allow_creators_to_manage_own_pins.sql)
+
+**Implementation:** [`services/pin-management.ts`](https://github.com/MESW-LES-2627/les-project-group-2/blob/staging/services/pin-management.ts) · [`app/trips/actions/manage-pins.ts`](https://github.com/MESW-LES-2627/les-project-group-2/blob/staging/app/trips/actions/manage-pins.ts) · [`components/map/EditPinModal.tsx`](https://github.com/MESW-LES-2627/les-project-group-2/blob/staging/components/map/EditPinModal.tsx)
+
+---
+
+## 5. Member Roles and Organizer Transfer (US-1.6)
+
+The trip owner can now hand the organizer role to another member.
+
+- **Transfer:** the current organizer selects a member and confirms the
+  transfer. The target member becomes the organizer and the current organizer
+  becomes a regular member.
+- **Atomic database operation:** `promote_to_organizer` is a `security definer`
+  function that verifies the caller is the current organizer, verifies the target
+  is a member, demotes the old organizer, promotes the new one and updates
+  `trips.organizer_id` in one transaction.
+- **Guarded server action:** `promoteToOrganizer` repeats the authorization
+  checks in the application layer and exposes a clear error if the caller is not
+  the organizer or the target is not a member.
+- **Clear UI:** the organizer badge shows the current organizer's name to
+  members (and `You` to the organizer), the transfer action asks for
+  confirmation, and failures are shown instead of being swallowed.
+- **Leaving the trip:** a member can leave; the organizer must transfer the role
+  or delete the trip first, so a trip cannot be left without an organizer.
+
+**Database:** [`20261120000000_promote_trip_organizer.sql`](https://github.com/MESW-LES-2627/les-project-group-2/blob/staging/supabase/migrations/20261120000000_promote_trip_organizer.sql)
+
+**Implementation:** [`app/trips/actions/manage-trip-members.ts`](https://github.com/MESW-LES-2627/les-project-group-2/blob/staging/app/trips/actions/manage-trip-members.ts) · [`app/trips/[id]/promote-member-button.tsx`](https://github.com/MESW-LES-2627/les-project-group-2/blob/staging/app/trips/%5Bid%5D/promote-member-button.tsx)
+
+---
+
+## 6. Browser-Level Acceptance Suite
+
+PR [#75](https://github.com/MESW-LES-2627/les-project-group-2/pull/75) replaced
+the component-only acceptance tests with a Playwright suite that drives the real
+Next.js application.
+
+- **Coverage:** 51 Playwright tests across 16 spec files, covering every merged
+  user story: US-1.1, US-1.2, US-1.3, US-1.4, US-1.5, US-1.6, US-1.7, US-2.1,
+  US-2.2, US-2.3, US-2.4, US-3.1, US-3.2, US-3.3, US-3.5 and US-3.7.
+- **Deterministic data:** `utils/supabase/test-session.ts` builds an in-memory
+  Supabase client from a test-session cookie, so the browser tests do not need a
+  seeded database. The cookie path is gated to non-production environments.
+- **One command:** `npm test` runs Vitest and then Playwright; CI installs the
+  Chromium browser before the suite.
+- **Maintained separately:** the Vitest acceptance tests under `tests/` remain
+  for component-level checks, while `acceptanceTests/*.spec.ts` is the
+  browser-level suite.

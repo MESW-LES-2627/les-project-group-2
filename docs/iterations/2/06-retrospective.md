@@ -2,55 +2,80 @@
 
 ## What went well
 
-- **The date decision loop is complete.** Candidate windows (US-2.1) and
-  availability (US-2.2) from Iteration 1 now feed ranked suggestions (US-2.4),
-  an official locked range (US-2.3) and one itinerary day per day. Members no
-  longer need to reconcile availability outside the application.
-- **Decisions are enforced, not just displayed.** Locking is an atomic
-  `security definer` database function, and row-level security freezes
-  availability and candidate windows while the dates are locked. Pin
-  confirmation and reverting are guarded by organizer checks in the server
-  actions, with an organizer-only update policy on `pins` as a second layer.
-- **Confirmed pins are reversible.** Treating confirmation as explicit state
-  with a revert action avoided a one-way decision and kept voting reopenable
-  when the group changes its mind.
-- **Regression safety grew with the increment.** The suite now has 428 passing
-  tests in 57 files with 93.96% line coverage, including one acceptance suite
-  per new story and unit coverage for the ranking, locking, confirmation and
-  persistence paths.
+- **Both decision loops are complete.** Candidate windows (US-2.1) and
+  availability (US-2.2) from Iteration 1 feed ranked suggestions (US-2.4), an
+  official locked range (US-2.3) and one itinerary day per day. Proposed pins
+  (US-3.1/3.2) now become confirmed spots (US-3.3) and can be corrected or
+  withdrawn by their authors (US-3.5).
+- **The group can change its mind safely.** Organizer transfer (US-1.6) is an
+  atomic database operation that demotes the old organizer and promotes the new
+  one in the same transaction, with the application layer repeating the
+  authorization checks. Pin confirmation and reverting remain reversible.
+- **Decisions are enforced, not just displayed.** Locking is a `security definer`
+  database function with RLS freezing availability and candidate windows while
+  locked. Pin confirmation, pin editing and organizer transfer each have a
+  database-level guard in addition to the server-action checks.
+- **Regression safety grew substantially.** The suite now has 563 passing tests
+  across 84 files: 512 Vitest tests and 51 Playwright browser tests covering
+  every merged story. Line coverage is 90.49%, lint is clean (0 errors, 0
+  warnings) and the production build passes.
+- **The acceptance tests now exercise the real application.** PR #75 replaced
+  the component-only acceptance tests with Playwright tests that drive Chromium
+  through the actual pages, with deterministic in-memory data and no seeded
+  database.
 - **Delivery stayed automated.** The staging pipeline built the application,
   applied migrations and deployed every merge in this increment; the final
   snapshot passed both Checks and Deploy.
+- **Review caught two high-risk problems before they shipped.** The Playwright
+  test-session cookie was originally honoured in every environment (an
+  authentication bypass) and the acceptance branch broke `next build` while CI
+  stayed green. Both were fixed before merge.
 
 ## What could be done better
 
-- **Migration ordering needs a guard.** `20261107000000_add_pin_confirmation.sql`
-  was merged after `20261109100000_lock_trip_dates.sql`, so the deploy had to
-  rely on `supabase db push --include-all` to apply it out of order. A migration
-  guard would reject this at review time instead of depending on an escape
-  hatch; PR #78 proposes exactly that.
-- **Already-applied migrations must not be edited.** At least one open branch
-  changes a migration that is already on staging. Schema changes should always
-  arrive as a new migration, even when the original is only a few days old.
-- **Manual database verification was postponed.** The PR test plans for US-2.3
-  and US-2.4 left the local Supabase manual check unchecked. The automated
-  tests mock the RPC boundary, so one end-to-end pass against the Docker stack
-  should be part of the release checklist.
-- **Late merges compressed review time.** US-2.3 merged on 18 November and
-  US-2.4 and US-3.3 on 19 November, leaving little time to review the three
-  stories together as one increment before the tag.
-- **Some map paths still have the lowest coverage.** `TripMapContainer` and
-  `LeafletMap` remain the weakest files in the report, especially around marker
-  interactions and persistence error paths. They deserve focused tests next
-  iteration.
+- **A merged PR can still miss the integration branch.** PR #74 (US-3.5) was
+  merged into `feature/US-3.3` after #73 had already merged that branch to
+  `staging`, so GitHub showed US-3.5 as merged while none of its code was on
+  staging. PR #81 re-targeted the same commit to `staging` and fixed it. Child
+  PRs must be merged before their parent branch, and the base branch must be
+  checked before merging.
+- **CI did not run the production build.** PR #80 passed lint and tests while
+  `next build` failed on a type error, and the acceptance branch failed on
+  unadapted test specs. PR #78 adds a `Build` job; until it merges, a green PR
+  does not prove the application compiles.
+- **Migration ordering still depends on an escape hatch.**
+  `20261107000000_add_pin_confirmation.sql` reached `staging` after
+  `20261109100000_lock_trip_dates.sql`, so the deploy relies on
+  `supabase db push --include-all`. PR #78 proposes rejecting this at review
+  time and rebuilding a clean database before merge.
+- **Already-applied migrations must not be edited.** An open branch changed a
+  migration that is already on staging. The correct fix is always a new
+  migration; the guard in PR #78 enforces it.
+- **Long-lived PRs accumulate conflicts and stale checks.** PR #78 was opened on
+  19 November and needed a staging merge plus a second check run on 20 November
+  before it was mergeable, and its docs page had to be removed to keep the PR
+  focused. Shorter-lived branches and a rebase/merge cadence would avoid this.
+- **Coverage margin is thin.** Line coverage dropped from 93.96% to 90.49% as
+  the map and role-management surfaces grew. `TripMapContainer` and
+  `LeafletMap` remain the weakest files, especially marker interactions and
+  persistence-error paths.
+- **Manual database verification was postponed.** The automated acceptance
+  tests use the in-memory Supabase client, so they do not exercise real RLS
+  policies. One end-to-end pass against the Docker stack should be part of the
+  release checklist.
 
 ## Proposed Improvements
 
-1. Merge the migration guard (PR #78) and enable the required checks on
-   `staging` and `main` before starting Iteration 3.
-2. Add a release checklist item for a manual pass on the local Supabase stack,
-   covering lock/unlock and pin confirmation against real RLS policies.
-3. Keep user stories in review for at most one iteration; either merge them
-   before the tag or move them explicitly to the next increment.
-4. Schedule the last story merge at least two days before the iteration tag so
-   the increment can be reviewed as a whole.
+1. Merge the migration guard (PR #78) and enable `Migration Guard`, `Database`,
+   `Build`, `Lint and Format` and `Test` as required checks on `staging` and
+   `main` before starting Iteration 3.
+2. Enforce child-before-parent merge order and make the base branch part of the
+   PR checklist; never merge a story into another feature branch after that
+   branch has reached `staging`.
+3. Add a release checklist item for a manual pass on the local Supabase stack,
+   covering lock/unlock, pin confirmation/edit/delete and organizer transfer
+   against real RLS policies.
+4. Keep the coverage gate above 90% and add focused browser or component tests
+   for map marker interactions and persistence-error paths next iteration.
+5. Freeze story merges at least two days before the iteration tag so the
+   increment can be reviewed and deployed as a whole.
