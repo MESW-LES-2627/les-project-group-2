@@ -30,13 +30,15 @@ story.
 
 ## Ready but Not Delivered
 
-These stories are in the **Ready** column of the project board but were not
-delivered in Iteration 2. They are the next candidates for Iteration 3.
+These stories are in the **Ready** column and were assigned, but no
+implementation or pull request was delivered in Iteration 2. They need an owner
+and a delivery slot in Iteration 3; the board status alone did not make them part
+of this increment.
 
 | Story | Issue | Board status | Notes |
 | :--- | :--- | :--- | :--- |
-| **US-3.4: Categorize Pins** | [#27](https://github.com/MESW-LES-2627/les-project-group-2/issues/27) | **Ready** | Pin categories, map colours and category editing exist, but the story is not complete: creating a pin still defaults to Sightseeing, and the category legend/selection flow is not finished. |
-| **US-3.6: Comment on a Pin** | [#29](https://github.com/MESW-LES-2627/les-project-group-2/issues/29) | **Ready** | Not started. Comments, authorship, timestamps and deletion are still to be designed and implemented. |
+| **US-3.4: Categorize Pins** | [#27](https://github.com/MESW-LES-2627/les-project-group-2/issues/27) | **Ready** | Assigned during Iteration 2 but no implementation was delivered. Pin categories, map colours and category editing exist from adjacent map work, but the story is not complete: creating a pin still defaults to Sightseeing, and the category legend/selection flow is not finished. |
+| **US-3.6: Comment on a Pin** | [#29](https://github.com/MESW-LES-2627/les-project-group-2/issues/29) | **Ready** | Assigned during Iteration 2 but no implementation or PR was delivered. Comments, authorship, timestamps and deletion are still to be designed and implemented. |
 
 ## Work in Review
 

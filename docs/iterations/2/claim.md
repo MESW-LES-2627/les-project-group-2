@@ -50,7 +50,7 @@
 | :--- | :--- |
 | **Verified staging snapshot** | [`2638f842`](https://github.com/MESW-LES-2627/les-project-group-2/commit/2638f842c20735bd2ae53148e4390768f795ae8d) |
 | **User stories delivered** | US-1.6 · US-2.3 · US-2.4 · US-2.5 · US-3.3 · US-3.5 |
-| **Ready, not delivered** | US-3.4 (Categorize Pins) · US-3.6 (Comment on a Pin) |
+| **Ready, not delivered** | US-3.4 (Categorize Pins) · US-3.6 (Comment on a Pin) — assigned, but no implementation or PR |
 | **Quality work delivered** | Browser-level Playwright acceptance suite (PR [#75](https://github.com/MESW-LES-2627/les-project-group-2/pull/75)) · migration guards and clean-database validation (PR [#78](https://github.com/MESW-LES-2627/les-project-group-2/pull/78)) |
 | **Application tests** | 563 passing tests across 84 files (512 Vitest + 51 Playwright) |
 | **Line coverage** | 90.49% (Vitest) |
