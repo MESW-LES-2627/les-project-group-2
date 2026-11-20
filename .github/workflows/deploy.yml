@@ -113,10 +113,9 @@ jobs:
           if [ -n "${{ secrets.SUPABASE_DB_URL_PRODUCTION }}" ]; then
             repair_args=(--db-url "${{ secrets.SUPABASE_DB_URL_PRODUCTION }}")
           else
-            repair_args=(--project-ref "${{ secrets.SUPABASE_PROD_PROJECT_ID }}")
+            repair_args=(--remote="${{ secrets.SUPABASE_PROD_PROJECT_ID }}")
           fi
-          supabase migration repair --status reverted 20261106150000 "${repair_args[@]}" \
-            || echo "::warning::Migration 20261106150000 is already absent from the remote history."
+          supabase migration repair --status reverted --yes 20261106150000 "${repair_args[@]}"
 
       # Production migrations (main branch)
       - name: Run Migrations (Production)
