@@ -3,7 +3,7 @@
 
 /**
  * @file components/map/TripMapContainer.tsx
- * @brief Simplified full-screen Carto Leaflet map with search bar, user profile badge, in-place pin voting, confirmed spots, and sign out.
+ * @brief Simplified full-screen Carto Leaflet map with search bar, user profile badge, in-place pin voting, pin editing/deletion, confirmed spots, and sign out.
  */
 
 import { useState, useCallback } from 'react'
@@ -13,6 +13,7 @@ import { logout } from '@/app/entry/actions/auth'
 import { SearchBar } from './SearchBar'
 import { TripsCard } from './TripsCard'
 import { ConfirmedSpotsCard } from './ConfirmedSpotsCard'
+import { EditPinModal } from './EditPinModal'
 import type { UserMemberTrip } from '@/app/trips/actions/get-member-trips'
 import { Pin, PlaceSearchResult } from '@/types/map'
 import { PinVoteCard } from './PinVoteCard'
@@ -20,6 +21,7 @@ import { ProfileCard } from '@/components/profile'
 import { confirmPinAction, revertPinAction } from '@/app/trips/actions/pin-confirmation'
 import { createPinAction } from '@/app/trips/actions/create-pin'
 import { togglePinVoteAction } from '@/app/trips/actions/vote-pin'
+import { updatePinAction, deletePinAction } from '@/app/trips/actions/manage-pins'
 
 // Dynamic import of LeafletMap with SSR disabled to prevent `window is not defined`
 const DynamicLeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -45,7 +47,7 @@ interface TripMapContainerProps {
 }
 
 /**
- * @brief Simplified full-screen interactive map with search bar, profile drawer, in-place pin voting, and confirmed spots list.
+ * @brief Simplified full-screen interactive map with search bar, profile drawer, in-place pin voting, pin editing/deletion, and confirmed spots list.
  * @param props Component properties.
  */
 export function TripMapContainer({
@@ -61,6 +63,7 @@ export function TripMapContainer({
 }: TripMapContainerProps) {
   const [pins, setPins] = useState<Pin[]>(initialPins)
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
+  const [editingPin, setEditingPin] = useState<Pin | null>(null)
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number; zoom?: number } | null>(null)
   const [isTripsCardOpen, setIsTripsCardOpen] = useState(false)
   const [isConfirmedSpotsOpen, setIsConfirmedSpotsOpen] = useState(false)
@@ -258,6 +261,72 @@ export function TripMapContainer({
     [handleConfirmToggle]
   )
 
+  /**
+   * @brief Handles saving pin edits and persists them for real trips.
+   */
+  const handleSavePinEdit = useCallback(
+    (updatedPin: Pin) => {
+      const previousPin = pins.find((p) => p.id === updatedPin.id)
+      setPins((prev) => prev.map((p) => (p.id === updatedPin.id ? updatedPin : p)))
+      setSelectedPin((prev) => (prev?.id === updatedPin.id ? updatedPin : prev))
+      setEditingPin(null)
+
+      if (!shouldPersist) return
+
+      void updatePinAction(updatedPin.tripId, updatedPin.id, {
+        name: updatedPin.name,
+        description: updatedPin.description ?? '',
+        category: updatedPin.category,
+        lat: updatedPin.lat,
+        lng: updatedPin.lng,
+        date: updatedPin.date,
+      })
+        .then((result) => {
+          if (!result.error) return
+          setPersistenceError(result.error)
+          if (previousPin) restorePin(previousPin)
+        })
+        .catch((error) => {
+          console.error('Failed to persist pin edit:', error)
+          setPersistenceError('Failed to save the pin changes.')
+          if (previousPin) restorePin(previousPin)
+        })
+    },
+    [pins, restorePin, shouldPersist]
+  )
+
+  /**
+   * @brief Handles deleting a pin (removes pin and its votes) and persists the deletion.
+   */
+  const handleDeletePin = useCallback(
+    (pinId: string) => {
+      const deletedPin = pins.find((p) => p.id === pinId)
+      const deletedIndex = pins.findIndex((p) => p.id === pinId)
+      setPins((prev) => prev.filter((p) => p.id !== pinId))
+      setSelectedPin(null)
+
+      if (!shouldPersist || !deletedPin) return
+
+      void deletePinAction(tripId, pinId)
+        .then((result) => {
+          if (!result.error) return
+          setPersistenceError(result.error)
+          setPins((prev) => {
+            if (prev.some((p) => p.id === pinId)) return prev
+            const next = [...prev]
+            next.splice(Math.max(0, deletedIndex), 0, deletedPin)
+            return next
+          })
+        })
+        .catch((error) => {
+          console.error('Failed to persist pin deletion:', error)
+          setPersistenceError('Failed to delete the pin.')
+          setPins((prev) => (prev.some((p) => p.id === pinId) ? prev : [...prev, deletedPin]))
+        })
+    },
+    [pins, shouldPersist, tripId]
+  )
+
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-950">
       {/* Top Floating Header with Search Bar and Actions */}
@@ -418,7 +487,7 @@ export function TripMapContainer({
         onPinClick={handlePinClick}
       />
 
-      {/* In-Place Pin Details, Voting, and Confirmation Card */}
+      {/* In-Place Pin Details, Voting, Edit, Delete, and Confirmation Card */}
       {selectedPin && (
         <PinVoteCard
           pin={selectedPin}
@@ -427,7 +496,19 @@ export function TripMapContainer({
           isOrganizer={isOrganizer}
           onVoteChange={handleVoteChange}
           onConfirmToggle={handleConfirmToggle}
+          onEdit={(pin) => setEditingPin(pin)}
+          onDelete={handleDeletePin}
           onClose={() => setSelectedPin(null)}
+        />
+      )}
+
+      {/* Edit Pin Modal Dialog */}
+      {editingPin && (
+        <EditPinModal
+          isOpen={Boolean(editingPin)}
+          pin={editingPin}
+          onSave={handleSavePinEdit}
+          onClose={() => setEditingPin(null)}
         />
       )}
     </div>
