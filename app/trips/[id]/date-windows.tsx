@@ -227,6 +227,7 @@ export function DateWindows({ tripId, windows, isOrganizer, locked = false }: Da
           </div>
           <div className="sm:col-span-2">
             <button
+              name="submit_date_id"
               type="submit"
               disabled={isPending}
               className="rounded-full bg-blue-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:opacity-50"
