@@ -74,6 +74,16 @@ npm run db:stop    # or: make db-stop
 
 # Reset local database (migrations and seed data)
 npm run db:reset   # or: make db-reset
+
+# Creates a new migration (needs -- {name of migration} in front)
+npm run db:make
+
+# Compares/Adapts the local state with the set of changes made from the local editor 
+npm run db:compare
+
+# Updates the migration state based on local files
+npm run db:update 
+
 ```
 
 #### Service URLs
@@ -124,11 +134,28 @@ We use [Vitest](https://vitest.dev/) with v8 coverage provider:
 
 ```bash
 # Run tests and print coverage report
-npm test
+npm run test:unit 
 ```
 
 - Tests are located in the `tests/` directory.
 - The project enforces a minimum **90% line coverage** for new business logic and service modules.
+
+### Running acceptance tests
+
+We use [Playwright](https://playwright.dev/):
+
+```bash
+# Runs acceptance tests
+npm run test:acceptance
+```
+
+Acceptance tests have their own specialized folder in the project root (acceptanceTests)
+
+### Running both acceptance and unit tests 
+
+```bash
+npm test
+```
 
 ### Linting and Code Formatting
 
@@ -197,7 +224,8 @@ A task or feature is considered complete when:
 7. Code adheres to ESLint rules with 0 errors and 0 warnings (`npm run lint`).
 8. Functions include Doxygen-style documentation.
 9. The Pull Request is reviewed and approved by at least one other team member.
-10. All user stories' acceptance criteria have at least one corresponding, and passing, acceptance test 
+10. All user stories' acceptance criteria have at least one corresponding, and passing, acceptance test
+11. All It's functions must have less than 10 points of cyclomatic complexity
 
 ### Submitting a Pull Request
 
