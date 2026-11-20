@@ -527,81 +527,6 @@ interface TripWorkspaceBodyProps {
     currentUserId: string
 }
 
-function TripWorkspaceBody({
-    tripId,
-    trip,
-    tripMembers,
-    dateWindows,
-    itineraryDays,
-    availabilityRows,
-    currentUserId,
-}: TripWorkspaceBodyProps) {
-    const isOrganizer = trip.organizer_id === currentUserId
-    const calendar = buildAvailabilityCalendar(
-        dateWindows,
-        availabilityRows,
-        tripMembers
-    )
-    const myAnswers = Object.fromEntries(
-        availabilityRows
-            .filter((row) => row.user_id === currentUserId)
-            .map((row) => [row.day, row.status])
-    )
-    const isLocked = Boolean(trip.locked_start_date)
-
-    return (
-        <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8">
-            <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-2 text-sm text-gray-500 transition hover:text-blue-700"
-            >
-                <span>←</span>
-                Back to my trips
-            </Link>
-
-            <TripHeader trip={trip} isOrganizer={isOrganizer} />
-
-            <TripMembersSection
-                tripMembers={tripMembers}
-                isOrganizer={isOrganizer}
-                currentUserId={currentUserId}
-                tripId={tripId}
-            />
-
-            <LockDates
-                tripId={tripId}
-                isOrganizer={isOrganizer}
-                windows={dateWindows}
-                lockedStart={trip.locked_start_date || null}
-                lockedEnd={trip.locked_end_date || null}
-                itineraryDayCount={itineraryDays.length}
-            />
-
-            <DateWindows
-                tripId={tripId}
-                windows={dateWindows}
-                isOrganizer={isOrganizer}
-                locked={isLocked}
-            />
-
-            {calendar.days.length > 0 && (
-                <AvailabilityCalendar
-                    tripId={tripId}
-                    days={calendar.days}
-                    missing={calendar.missing}
-                    memberCount={tripMembers.length}
-                    myAnswers={myAnswers}
-                    locked={isLocked}
-                />
-            )}
-
-            <TripSectionsList tripId={tripId} />
-
-            <TripDangerZone tripId={tripId} isOrganizer={isOrganizer} />
-        </div>
-    )
-}
-
 async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
     await connection()
     const {id} = await params
@@ -631,6 +556,12 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
         (dateWindows ?? []) as DateWindow[],
         availabilityRows,
         tripMembers
+    )
+
+    const myAnswers = Object.fromEntries(
+      availabilityRows
+          .filter((row) => row.user_id === user.id)
+          .map((row) => [row.day, row.status])
     )
 
     console.log(load)

@@ -28,29 +28,6 @@ export default async function TripMapPage({ params }: TripMapPageProps) {
   )
 }
 
-async function fetchUserProfile(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
-): Promise<{ username?: string; avatarUrl: string | null }> {
-  try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('username, avatar_url')
-      .eq('id', userId)
-      .single()
-
-    if (profile) {
-      return {
-        username: profile.username ?? undefined,
-        avatarUrl: profile.avatar_url ?? null,
-      }
-    }
-  } catch {
-    // Keep the map usable when profile data is unavailable.
-  }
-  return { avatarUrl: null }
-}
-
 /**
  * @brief Dynamic server component loading trip workspace map content.
  */

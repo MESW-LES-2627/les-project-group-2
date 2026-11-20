@@ -81,53 +81,6 @@ function LockedDatesView({
   )
 }
 
-interface UnlockedDatesViewProps {
-  isOrganizer: boolean
-  isPending: boolean
-  onLock: (event: React.FormEvent<HTMLFormElement>) => void
-}
-
-function UnlockedDatesView({
-  isOrganizer,
-  isPending,
-  onLock,
-}: UnlockedDatesViewProps) {
-  const description = isOrganizer
-    ? 'Once the group has answered, lock the final dates to start planning the itinerary.'
-    : 'The organizer has not locked the trip dates yet.'
-
-  return (
-    <div className="mt-2">
-      <p className="text-sm text-gray-500">{description}</p>
-      {isOrganizer && (
-        <form noValidate onSubmit={onLock} className="mt-5 grid gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="lock-start" className="mb-2 block text-sm font-medium text-gray-700">
-              Trip start
-            </label>
-            <input id="lock-start" name="startDate" type="date" className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="lock-end" className="mb-2 block text-sm font-medium text-gray-700">
-              Trip end
-            </label>
-            <input id="lock-end" name="endDate" type="date" className={inputClass} />
-          </div>
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              disabled={isPending}
-              className="rounded-full bg-blue-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:opacity-50"
-            >
-              {isPending ? 'Locking…' : 'Lock dates'}
-            </button>
-          </div>
-        </form>
-      )}
-    </div>
-  )
-}
-
 /**
  * @brief Shows the official dates of the trip and lets the organizer lock or unlock them.
  * @param props Component properties with the lock state, the candidate windows and the viewer's role.
