@@ -35,10 +35,13 @@ test.describe('US-1.4: Manage Trip Members', () => {
     await page.goto('/trips/trip-100')
     await expect(page.getByRole('heading', { name: 'Trip members' })).toBeVisible()
 
-    await expect(page.getByText('Organizer Bob')).toBeVisible()
-    await expect(page.getByText('Member Alice')).toBeVisible()
-    await expect(page.getByText('organizer', { exact: true })).toBeVisible()
-    await expect(page.getByText('member', { exact: true })).toBeVisible()
+    const organizerRow = page.getByRole('listitem').filter({ hasText: 'Organizer Bob' })
+    const memberRow = page.getByRole('listitem').filter({ hasText: 'Member Alice' })
+
+    await expect(organizerRow).toBeVisible()
+    await expect(memberRow).toBeVisible()
+    await expect(organizerRow.getByText('organizer', { exact: true })).toBeVisible()
+    await expect(memberRow.getByText('member', { exact: true })).toBeVisible()
   })
 
   test('Given I am the organizer, when I remove a member, then they lose access to the trip', async ({

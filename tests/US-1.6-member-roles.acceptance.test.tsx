@@ -87,6 +87,7 @@ describe('US-1.6 Acceptance Tests: Member Roles & Permissions', () => {
         reload: vi.fn(),
       },
     })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
   afterEach(() => {
@@ -98,17 +99,42 @@ describe('US-1.6 Acceptance Tests: Member Roles & Permissions', () => {
     const fake = createFakeSupabase(true)
     vi.mocked(supabaseServer.createClient).mockResolvedValue(fake.client)
 
-    render(<PromoteToOrganizerButton tripId="trip-1" memberId="user-2" />)
+    render(
+      <PromoteToOrganizerButton
+        tripId="trip-1"
+        memberId="user-2"
+        memberName="Miguel Member"
+      />
+    )
 
-    const button = screen.getByRole('button', { name: 'Transfer organizator role' })
+    const button = screen.getByRole('button', { name: 'Transfer organizer role' })
     expect(button).toBeTruthy()
 
     fireEvent.click(button)
 
     await waitFor(() => {
+      expect(window.confirm).toHaveBeenCalledWith(
+        'Transfer the organizer role to Miguel Member? You will become a regular member.'
+      )
       expect(fake.getOrganizerId()).toBe('user-2')
       expect(window.location.reload).toHaveBeenCalled()
     })
+  })
+
+  it('does not transfer the role when the organizer cancels the confirmation', async () => {
+    vi.mocked(window.confirm).mockReturnValueOnce(false)
+    const fake = createFakeSupabase(true)
+    vi.mocked(supabaseServer.createClient).mockResolvedValue(fake.client)
+
+    render(<PromoteToOrganizerButton tripId="trip-1" memberId="user-2" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer organizer role' }))
+
+    await waitFor(() => {
+      expect(window.confirm).toHaveBeenCalled()
+    })
+    expect(fake.getOrganizerId()).toBe('user-1')
+    expect(window.location.reload).not.toHaveBeenCalled()
   })
 
   it('rejects promotion when the caller is not the organizer', async () => {

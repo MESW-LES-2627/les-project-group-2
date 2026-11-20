@@ -53,6 +53,13 @@ const sections = [
     },
 ]
 
+function getOrganizerName(members: TripMember[]) {
+    return (
+        members.find((member) => member.role === 'organizer')?.display_name ??
+        'Trip organizer'
+    )
+}
+
 export default function TripWorkspacePage({
                                               params,
                                           }: TripWorkspacePageProps) {
@@ -199,7 +206,15 @@ function TripOrganizerForm({ trip }: { trip: TripData }) {
     )
 }
 
-function TripHeader({ trip, isOrganizer }: { trip: TripData; isOrganizer: boolean }) {
+function TripHeader({
+    trip,
+    tripMembers,
+    isOrganizer,
+}: {
+    trip: TripData
+    tripMembers: TripMember[]
+    isOrganizer: boolean
+}) {
     return (
         <header className="mt-8 rounded-3xl bg-white p-7 shadow-sm sm:p-10">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
@@ -230,8 +245,11 @@ function TripHeader({ trip, isOrganizer }: { trip: TripData; isOrganizer: boolea
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
                         Organizer
                     </p>
-                    <p className="mt-1 font-semibold text-gray-800">
-                        {isOrganizer ? 'You' : 'Trip organizer'}
+                    <p
+                        data-testid="trip-organizer-name"
+                        className="mt-1 font-semibold text-gray-800"
+                    >
+                        {isOrganizer ? 'You' : getOrganizerName(tripMembers)}
                     </p>
                 </div>
             </div>
@@ -274,6 +292,7 @@ function TripMemberItem({
                     <PromoteToOrganizerButton
                         tripId={tripId}
                         memberId={member.user_id}
+                        memberName={member.display_name}
                     />
                     <form action={removeTripMember}>
                         <input type="hidden" name="tripId" value={tripId} />
@@ -559,7 +578,11 @@ function TripWorkspaceBody({
                 Back to my trips
             </Link>
 
-            <TripHeader trip={trip} isOrganizer={isOrganizer} />
+            <TripHeader
+                trip={trip}
+                tripMembers={tripMembers}
+                isOrganizer={isOrganizer}
+            />
 
             <TripMembersSection
                 tripMembers={tripMembers}

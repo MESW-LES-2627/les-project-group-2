@@ -36,7 +36,6 @@ test.describe('US-2.3: Lock Official Trip Dates', () => {
 
     page.on('dialog', (dialog) => dialog.accept())
 
-    await page.locator()
 
     await page.locator('#new-start').fill('2028-09-01')
     await page.locator('#new-end').fill('2028-09-10')

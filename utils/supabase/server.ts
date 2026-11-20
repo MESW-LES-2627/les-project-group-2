@@ -6,7 +6,12 @@ export async function createClient() {
   const cookieStore = await cookies()
 
   const allCookies = typeof cookieStore.getAll === 'function' ? cookieStore.getAll() : []
-  const testSessionCookie = allCookies.find((c) => c.name === 'planit-test-session')
+  // The test-session client bypasses Supabase auth, so it must never be
+  // reachable from a production deployment. Playwright runs against `next dev`.
+  const testSessionsEnabled = process.env.NODE_ENV !== 'production'
+  const testSessionCookie = testSessionsEnabled
+    ? allCookies.find((c) => c.name === 'planit-test-session')
+    : undefined
   if (testSessionCookie?.value) {
     try {
       const parsed: PlanitTestSession = JSON.parse(decodeURIComponent(testSessionCookie.value))
