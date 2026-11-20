@@ -57,11 +57,11 @@
 
 ## Board
 
-**Start of Iteration 2** — the six delivered stories are still outside Done; US-3.4 and US-3.6 are in Ready.
+**Start of Iteration 2**
 
 ![Board at the start of Iteration 2](initial_board.jpg)
 
-**End of Iteration 2** — the six stories are Done; US-3.4 and US-3.6 remain Ready and carry into Iteration 3.
+**End of Iteration 2**
 
 ![Final board at the end of Iteration 2](final_board.png)
 

@@ -2,7 +2,7 @@
 
 ## Toolchain
 
-The team used **Gemini 3.8 Flash with Antigravity CLI** throughout the project. For the Iteration 2 close-out it also used **OpenCode with DeepSeek V4.1 Flash (T3 Code)** to review open PRs, resolve merge conflicts, fix the build and test-session issues, and finish the Playwright specs. Every AI change went through a pull request, review and CI.
+The team used **Gemini 3.8 Flash with Antigravity CLI** throughout the project. For the Iteration 2 close-out it also used **OpenCode with DeepSeek V4.1 Free** to review open PRs, resolve merge conflicts, fix the build and test-session issues, and finish the Playwright specs. Every AI change went through a pull request, review and CI.
 
 ## Where AI Helped
 

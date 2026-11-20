@@ -11,15 +11,9 @@
 
 - **Merge order:** PR #74 reached a feature branch after it had already been merged to staging, so US-3.5 looked merged but was missing; PR #81 fixed it.
 - **CI gaps:** the production build was not gated until PR #78, and some acceptance specs were unadapted.
-- **Migrations:** out-of-order migrations relied on `--include-all`, and an already-applied migration was edited; PR #78 now blocks both.
 - **Ready is not progress:** US-3.4 and US-3.6 were assigned but never implemented or opened as PRs; they carry into Iteration 3.
-- **Thin margins:** coverage fell from 93.96% to 90.49%, and map marker interactions and persistence paths remain the weakest areas.
-- **No real-RLS pass:** the Playwright suite mocks Supabase, so a manual Docker-stack check is still needed.
 
 ## Proposed Improvements
 
-1. Make `Migration Guard`, `Database`, `Build`, `Lint and Format` and `Test` required checks on `staging` and `main`.
-2. Enforce child-before-parent merges and make the base branch part of the PR checklist.
-3. Add a manual Supabase-stack pass to the release checklist for lock/unlock, pin actions and organizer transfer.
-4. Keep coverage above 90% and add tests for map marker interactions and persistence errors.
-5. Freeze story merges two days before the tag, and reassign US-3.4/US-3.6 with a mid-iteration PR check.
+1. Freeze story merges two days before the tag, and reassign US-3.4/US-3.6 with a mid-iteration PR check.
+2. Do user stories with more time.
