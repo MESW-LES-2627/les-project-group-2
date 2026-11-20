@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { buildTestSupabaseClient } from '@/utils/supabase/test-session'
+import { buildTestSupabaseClient, type PlanitTestSession } from '@/utils/supabase/test-session'
 
 describe('buildTestSupabaseClient', () => {
   it('handles auth operations (getUser, signIn, signUp, signOut)', async () => {
@@ -27,7 +27,7 @@ describe('buildTestSupabaseClient', () => {
   })
 
   it('handles database table queries and mutations', async () => {
-    const session = {
+    const session: PlanitTestSession = {
       trips: [{ id: 'trip-1', name: 'Algarve', invite_code: 'ALG-1', organizer_id: 'u-1' }],
       members: [{ user_id: 'u-1', display_name: 'Organizer', role: 'organizer' as const }],
       windows: [{ id: 'w-1', trip_id: 'trip-1', start_date: '2026-07-01', end_date: '2026-07-10' }],
@@ -65,27 +65,36 @@ describe('buildTestSupabaseClient', () => {
     expect(session.profile?.username).toBe('UpdatedName')
 
     await client.from('trips').update({ name: 'Algarve Summer' }).eq('id', 'trip-1')
-    expect(session.trips[0].name).toBe('Algarve Summer')
+    expect(session.trips?.[0]?.name).toBe('Algarve Summer')
 
     await client.from('trip_date_windows').delete().eq('id', 'w-1')
-    expect(session.windows.some((w) => w.id === 'w-1')).toBe(false)
+    expect(session.windows?.some((w) => w.id === 'w-1')).toBe(false)
 
     await client.from('trip_members').delete().eq('user_id', 'u-2')
-    expect(session.members.some((m) => m.user_id === 'u-2')).toBe(false)
+    expect(session.members?.some((m) => m.user_id === 'u-2')).toBe(false)
 
     await client.from('trip_availability').upsert([{ trip_id: 'trip-1', user_id: 'u-1', day: '2026-07-02' }])
     expect(session.availabilities).toHaveLength(2)
+  })
+
+  it('handles RPC and storage operations', async () => {
+    const session: PlanitTestSession = {
+      trips: [{ id: 'trip-1', name: 'Algarve', invite_code: 'ALG-1', organizer_id: 'u-1' }],
+      members: [{ user_id: 'u-1', display_name: 'Organizer', role: 'organizer' as const }],
+      itineraryDays: [],
+    }
+    const client = buildTestSupabaseClient(session)
 
     // RPC
     const membersRpc = await client.rpc('get_trip_members', { p_trip_id: 'trip-1' })
     expect(membersRpc.data).toHaveLength(1)
 
     await client.rpc('lock_trip_dates', { p_trip_id: 'trip-1', p_start: '2026-12-01', p_end: '2026-12-05' })
-    expect(session.trips[0].state).toBe('Dates locked')
+    expect(session.trips?.[0]?.state).toBe('Dates locked')
     expect(session.itineraryDays).toHaveLength(5)
 
     await client.rpc('unlock_trip_dates', { p_trip_id: 'trip-1' })
-    expect(session.trips[0].state).toBe('Planning')
+    expect(session.trips?.[0]?.state).toBe('Planning')
     expect(session.itineraryDays).toHaveLength(0)
 
     // Storage

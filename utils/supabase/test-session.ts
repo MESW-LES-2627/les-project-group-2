@@ -49,6 +49,232 @@ type CookieSetter = {
   set: (name: string, value: string, options?: { path?: string }) => void
 }
 
+type SessionTrip = NonNullable<PlanitTestSession['trips']>[number]
+
+function findTripByFilter(
+  trips: PlanitTestSession['trips'],
+  tripId?: string,
+  inviteCode?: string
+) {
+  if (!trips) return null
+  return (
+    trips.find((t) => (tripId && t.id === tripId) || (inviteCode && t.invite_code === inviteCode)) ?? null
+  )
+}
+
+function handleProfilesSingle(
+  session: PlanitTestSession,
+  user: { id: string; email?: string } | null | undefined
+) {
+  const defaultUsername = user?.email ? user.email.split('@')[0] : 'Traveler'
+  return {
+    data: session.profile ?? {
+      username: defaultUsername,
+      avatar_url: null,
+    },
+    error: null,
+  }
+}
+
+function handleTripsSingle(
+  session: PlanitTestSession,
+  filters: Record<string, unknown>
+) {
+  const tripId = filters['id'] as string | undefined
+  const inviteCode = filters['invite_code'] as string | undefined
+  const found = findTripByFilter(session.trips, tripId, inviteCode)
+  return { data: found ?? session.trips?.[0] ?? null, error: null }
+}
+
+function handleTripMembersSingle(
+  session: PlanitTestSession,
+  filters: Record<string, unknown>
+) {
+  const userId = filters['user_id'] as string | undefined
+  const found = session.members?.find((m) => !userId || m.user_id === userId)
+  return { data: found ?? { role: 'organizer' }, error: null }
+}
+
+function handleTripDateWindowsQuery(
+  session: PlanitTestSession,
+  filters: Record<string, unknown>,
+  action: unknown,
+  syncCookie: () => void
+) {
+  const windowId = filters['id'] as string | undefined
+  if (action === 'delete') {
+    if (windowId && session.windows) {
+      session.windows = session.windows.filter((w) => w.id !== windowId)
+    }
+    syncCookie()
+    return { data: { id: windowId ?? 'w-removed' }, error: null }
+  }
+  const found = session.windows?.find((w) => !windowId || w.id === windowId)
+  return { data: found ?? null, error: null }
+}
+
+function handleTripsMaybeSingle(
+  session: PlanitTestSession,
+  filters: Record<string, unknown>
+) {
+  const tripId = filters['id'] as string | undefined
+  const inviteCode = filters['invite_code'] as string | undefined
+  const found = findTripByFilter(session.trips, tripId, inviteCode)
+  return { data: found ?? null, error: null }
+}
+
+function handleTripMembersMaybeSingle(
+  session: PlanitTestSession,
+  filters: Record<string, unknown>,
+  action: unknown,
+  syncCookie: () => void
+) {
+  const userId = filters['user_id'] as string | undefined
+  if (action === 'delete') {
+    if (userId && session.members) {
+      session.members = session.members.filter((m) => m.user_id !== userId)
+    }
+    syncCookie()
+    return { data: { user_id: userId ?? 'm-removed' }, error: null }
+  }
+  const found = session.members?.find((m) => !userId || m.user_id === userId)
+  return { data: found ?? null, error: null }
+}
+
+function handleInsert(table: string, data: unknown, session: PlanitTestSession) {
+  if (typeof data !== 'object' || data === null) return
+
+  if (table === 'trips' && Array.isArray(session.trips)) {
+    session.trips.push(data as (typeof session.trips)[0])
+    return
+  }
+  if (table === 'trip_date_windows') {
+    session.windows = session.windows ?? []
+    session.windows.push({ id: `w-${Date.now()}`, ...(data as Record<string, string>) } as (typeof session.windows)[0])
+    return
+  }
+  if (table === 'trip_members') {
+    session.members = session.members ?? []
+    session.members.push({ display_name: 'Member', ...(data as Record<string, string>) } as (typeof session.members)[0])
+  }
+}
+
+function handleDeleteAction(
+  table: string,
+  filters: Record<string, unknown>,
+  session: PlanitTestSession
+) {
+  if (table === 'trip_members') {
+    const memberId = filters['user_id'] as string | undefined
+    if (memberId && session.members) {
+      session.members = session.members.filter((m) => m.user_id !== memberId)
+    }
+  } else if (table === 'trip_date_windows') {
+    const windowId = filters['id'] as string | undefined
+    if (windowId && session.windows) {
+      session.windows = session.windows.filter((w) => w.id !== windowId)
+    }
+  }
+}
+
+function mapTripDates(session: PlanitTestSession, t: SessionTrip) {
+  return {
+    trip_date_windows: session.windows ?? t.trip_date_windows ?? [],
+    trip_itinerary_days: session.itineraryDays ?? t.trip_itinerary_days ?? [],
+    trip_dates: t.trip_dates ?? [],
+  }
+}
+
+function mapTripMemberRow(session: PlanitTestSession, t: SessionTrip, userId?: string) {
+  const dates = mapTripDates(session, t)
+  return {
+    user_id: userId,
+    trip_id: t.id,
+    trips: {
+      id: t.id,
+      name: t.name,
+      destination: t.destination ?? 'Portugal',
+      description: t.description ?? null,
+      state: t.state ?? 'Planning',
+      created_at: t.created_at ?? '2026-11-01',
+      organizer_id: t.organizer_id ?? userId,
+      locked_start_date: t.locked_start_date ?? null,
+      locked_end_date: t.locked_end_date ?? null,
+      ...dates,
+    },
+  }
+}
+
+function getTableData(table: string, session: PlanitTestSession, userId?: string): unknown {
+  const map: Record<string, unknown> = {
+    trips: session.trips,
+    trip_members: session.trips ? session.trips.map((t) => mapTripMemberRow(session, t, userId)) : [],
+    trip_date_windows: session.windows,
+    trip_itinerary_days: session.itineraryDays,
+    trip_availability: session.availabilities,
+  }
+  return map[table] ?? []
+}
+
+function handleRpcLockTripDates(
+  session: PlanitTestSession,
+  args: Record<string, unknown> | undefined,
+  syncCookie: () => void
+) {
+  const trip = session.trips?.[0]
+  if (trip) {
+    trip.state = 'Dates locked'
+    trip.locked_start_date = (args?.p_start as string) || '2026-12-01'
+    trip.locked_end_date = (args?.p_end as string) || '2026-12-05'
+    session.itineraryDays = [
+      { id: 'itin-1', day: '2026-12-01', trip_id: trip.id },
+      { id: 'itin-2', day: '2026-12-02', trip_id: trip.id },
+      { id: 'itin-3', day: '2026-12-03', trip_id: trip.id },
+      { id: 'itin-4', day: '2026-12-04', trip_id: trip.id },
+      { id: 'itin-5', day: '2026-12-05', trip_id: trip.id },
+    ]
+    syncCookie()
+  }
+  return { data: null, error: null }
+}
+
+function handleRpcUnlockTripDates(session: PlanitTestSession, syncCookie: () => void) {
+  const trip = session.trips?.[0]
+  if (trip) {
+    trip.state = 'Planning'
+    trip.locked_start_date = null
+    trip.locked_end_date = null
+    session.itineraryDays = []
+    syncCookie()
+  }
+  return { data: null, error: null }
+}
+
+function handleRpcPromoteToOrganizer(
+  session: PlanitTestSession,
+  args: Record<string, unknown> | undefined,
+  syncCookie: () => void
+) {
+  const tripId = args?.p_trip_id as string | undefined
+  const newOrgId = args?.p_new_organizer_id as string | undefined
+  const trip = session.trips?.find((t) => t.id === tripId)
+  if (trip && newOrgId) {
+    const oldOrgId = trip.organizer_id
+    trip.organizer_id = newOrgId
+    if (session.members) {
+      session.members.forEach((m) => {
+        if (m.user_id === newOrgId) {
+          m.role = 'organizer'
+        } else if (m.user_id === oldOrgId) {
+          m.role = 'member'
+        }
+      })
+    }
+    syncCookie()
+  }
+  return { data: null, error: null }
+}
+
 export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?: CookieSetter): SupabaseClient {
   const user = session.user === undefined ? { id: 'u-1', email: 'traveler@planit.app' } : session.user
 
@@ -118,92 +344,34 @@ export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?
           ;(query._filters as Record<string, unknown>)[col] = val
           return query
         },
+        order: () => query,
+        limit: () => query,
+        in: () => query,
+        neq: () => query,
+        range: () => query,
         single: async () => {
           const filters = query._filters as Record<string, unknown>
-          if (table === 'profiles') {
-            return {
-              data: session.profile ?? {
-                username: user?.email ? user.email.split('@')[0] : 'Traveler',
-                avatar_url: null,
-              },
-              error: null,
-            }
+          const handlers: Record<string, () => { data: unknown; error: null }> = {
+            profiles: () => handleProfilesSingle(session, user),
+            trips: () => handleTripsSingle(session, filters),
+            trip_members: () => handleTripMembersSingle(session, filters),
+            trip_date_windows: () => handleTripDateWindowsQuery(session, filters, query._action, syncCookie),
           }
-          if (table === 'trips') {
-            const tripId = filters['id'] as string | undefined
-            const inviteCode = filters['invite_code'] as string | undefined
-            const found = session.trips?.find(
-              (t) => (tripId && t.id === tripId) || (inviteCode && t.invite_code === inviteCode)
-            )
-            return { data: found ?? session.trips?.[0] ?? null, error: null }
-          }
-          if (table === 'trip_members') {
-            const userId = filters['user_id'] as string | undefined
-            const found = session.members?.find((m) => !userId || m.user_id === userId)
-            return { data: found ?? { role: 'organizer' }, error: null }
-          }
-          if (table === 'trip_date_windows') {
-            const windowId = filters['id'] as string | undefined
-            if (query._action === 'delete') {
-              if (windowId && session.windows) {
-                session.windows = session.windows.filter((w) => w.id !== windowId)
-              }
-              syncCookie()
-              return { data: { id: windowId ?? 'w-removed' }, error: null }
-            }
-            const found = session.windows?.find((w) => !windowId || w.id === windowId)
-            return { data: found ?? null, error: null }
-          }
-          return { data: null, error: null }
+          const handler = handlers[table]
+          return handler ? handler() : { data: null, error: null }
         },
         maybeSingle: async () => {
           const filters = query._filters as Record<string, unknown>
-          if (table === 'trips') {
-            const tripId = filters['id'] as string | undefined
-            const inviteCode = filters['invite_code'] as string | undefined
-            const found = session.trips?.find(
-              (t) => (tripId && t.id === tripId) || (inviteCode && t.invite_code === inviteCode)
-            )
-            return { data: found ?? null, error: null }
+          const handlers: Record<string, () => { data: unknown; error: null }> = {
+            trips: () => handleTripsMaybeSingle(session, filters),
+            trip_members: () => handleTripMembersMaybeSingle(session, filters, query._action, syncCookie),
+            trip_date_windows: () => handleTripDateWindowsQuery(session, filters, query._action, syncCookie),
           }
-          if (table === 'trip_members') {
-            const userId = filters['user_id'] as string | undefined
-            if (query._action === 'delete') {
-              if (userId && session.members) {
-                session.members = session.members.filter((m) => m.user_id !== userId)
-              }
-              syncCookie()
-              return { data: { user_id: userId ?? 'm-removed' }, error: null }
-            }
-            const found = session.members?.find((m) => !userId || m.user_id === userId)
-            return { data: found ?? null, error: null }
-          }
-          if (table === 'trip_date_windows') {
-            const windowId = filters['id'] as string | undefined
-            if (query._action === 'delete') {
-              if (windowId && session.windows) {
-                session.windows = session.windows.filter((w) => w.id !== windowId)
-              }
-              syncCookie()
-              return { data: { id: windowId ?? 'w-removed' }, error: null }
-            }
-            const found = session.windows?.find((w) => !windowId || w.id === windowId)
-            return { data: found ?? null, error: null }
-          }
-          return { data: null, error: null }
+          const handler = handlers[table]
+          return handler ? handler() : { data: null, error: null }
         },
         insert: (data: unknown) => {
-          if (table === 'trips' && Array.isArray(session.trips) && typeof data === 'object' && data !== null) {
-            session.trips.push(data as (typeof session.trips)[0])
-          }
-          if (table === 'trip_date_windows' && typeof data === 'object' && data !== null) {
-            session.windows = session.windows ?? []
-            session.windows.push({ id: `w-${Date.now()}`, ...(data as Record<string, string>) } as (typeof session.windows)[0])
-          }
-          if (table === 'trip_members' && typeof data === 'object' && data !== null) {
-            session.members = session.members ?? []
-            session.members.push({ display_name: 'Member', ...(data as Record<string, string>) } as (typeof session.members)[0])
-          }
+          handleInsert(table, data, session)
           syncCookie()
           return query
         },
@@ -235,52 +403,11 @@ export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?
           return query
         },
         then: (onfulfilled?: (res: { data: unknown; error: unknown }) => unknown) => {
-          const filters = query._filters as Record<string, unknown>
           if (query._action === 'delete') {
-            if (table === 'trip_members') {
-              const memberId = filters['user_id'] as string | undefined
-              if (memberId && session.members) {
-                session.members = session.members.filter((m) => m.user_id !== memberId)
-              }
-            }
-            if (table === 'trip_date_windows') {
-              const windowId = filters['id'] as string | undefined
-              if (windowId && session.windows) {
-                session.windows = session.windows.filter((w) => w.id !== windowId)
-              }
-            }
+            handleDeleteAction(table, query._filters as Record<string, unknown>, session)
             syncCookie()
           }
-          let data: unknown = []
-          if (table === 'trips') {
-            data = session.trips ?? []
-          } else if (table === 'trip_members') {
-            data = (session.trips ?? []).map((t) => ({
-              user_id: user?.id,
-              trip_id: t.id,
-              trips: {
-                id: t.id,
-                name: t.name,
-                destination: t.destination ?? 'Portugal',
-                description: t.description ?? null,
-                state: t.state ?? 'Planning',
-                created_at: t.created_at ?? '2026-11-01',
-                organizer_id: t.organizer_id ?? user?.id,
-                locked_start_date: t.locked_start_date ?? null,
-                locked_end_date: t.locked_end_date ?? null,
-                trip_date_windows: session.windows ?? t.trip_date_windows ?? [],
-                trip_itinerary_days: session.itineraryDays ?? t.trip_itinerary_days ?? [],
-                trip_dates: t.trip_dates ?? [],
-              },
-            }))
-          } else if (table === 'trip_date_windows') {
-            data = session.windows ?? []
-          } else if (table === 'trip_itinerary_days') {
-            data = session.itineraryDays ?? []
-          } else if (table === 'trip_availability') {
-            data = session.availabilities ?? []
-          }
-          const result = { data, error: null }
+          const result = { data: getTableData(table, session, user?.id), error: null }
           return Promise.resolve(onfulfilled ? onfulfilled(result) : result)
         },
       }
@@ -300,32 +427,13 @@ export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?
         return { data: session.members ?? [], error: null }
       }
       if (fn === 'lock_trip_dates') {
-        const trip = session.trips?.[0]
-        if (trip) {
-          trip.state = 'Dates locked'
-          trip.locked_start_date = (args?.p_start as string) || '2026-12-01'
-          trip.locked_end_date = (args?.p_end as string) || '2026-12-05'
-          session.itineraryDays = [
-            { id: 'itin-1', day: '2026-12-01', trip_id: trip.id },
-            { id: 'itin-2', day: '2026-12-02', trip_id: trip.id },
-            { id: 'itin-3', day: '2026-12-03', trip_id: trip.id },
-            { id: 'itin-4', day: '2026-12-04', trip_id: trip.id },
-            { id: 'itin-5', day: '2026-12-05', trip_id: trip.id },
-          ]
-          syncCookie()
-        }
-        return { data: null, error: null }
+        return handleRpcLockTripDates(session, args, syncCookie)
       }
       if (fn === 'unlock_trip_dates') {
-        const trip = session.trips?.[0]
-        if (trip) {
-          trip.state = 'Planning'
-          trip.locked_start_date = null
-          trip.locked_end_date = null
-          session.itineraryDays = []
-          syncCookie()
-        }
-        return { data: null, error: null }
+        return handleRpcUnlockTripDates(session, syncCookie)
+      }
+      if (fn === 'promote_to_organizer') {
+        return handleRpcPromoteToOrganizer(session, args, syncCookie)
       }
       return { data: null, error: null }
     },

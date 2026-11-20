@@ -49,6 +49,9 @@ interface TripMapContainerProps {
 interface MapHeaderProps {
   isTripsCardOpen: boolean
   onToggleTripsCard: () => void
+  isConfirmedSpotsOpen: boolean
+  onToggleConfirmedSpots: () => void
+  confirmedCount: number
   onSelectPlace: (place: PlaceSearchResult) => void
   displayName?: string
   avatarUrl?: string | null
@@ -59,6 +62,9 @@ interface MapHeaderProps {
 function MapHeader({
   isTripsCardOpen,
   onToggleTripsCard,
+  isConfirmedSpotsOpen,
+  onToggleConfirmedSpots,
+  confirmedCount,
   onSelectPlace,
   displayName,
   avatarUrl,
@@ -89,6 +95,23 @@ function MapHeader({
         >
           <Compass className="h-3.5 w-3.5 text-blue-400" />
           <span>Trips</span>
+        </button>
+
+        {/* Button to open confirmed spots list */}
+        <button
+          type="button"
+          data-testid="toggle-confirmed-spots-button"
+          onClick={onToggleConfirmedSpots}
+          aria-expanded={isConfirmedSpotsOpen}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-xs font-semibold shadow-lg backdrop-blur-md transition-colors ${
+            isConfirmedSpotsOpen
+              ? 'bg-amber-500 border-amber-300 text-white'
+              : 'bg-slate-900/85 hover:bg-slate-800 border-white/10 text-amber-300'
+          }`}
+          title="Confirmed Spots"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5 text-amber-400" />
+          <span>Confirmed ({confirmedCount})</span>
         </button>
       </div>
 
@@ -138,6 +161,47 @@ function MapHeader({
       </div>
     </header>
   )
+}
+
+interface PersistenceAlertProps {
+  error: string | null
+  onDismiss: () => void
+}
+
+function PersistenceAlert({ error, onDismiss }: PersistenceAlertProps) {
+  if (!error) return null
+
+  return (
+    <div
+      role="alert"
+      data-testid="pin-persistence-error"
+      className="absolute top-20 left-1/2 z-[870] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-xs font-medium text-red-800 shadow-lg"
+    >
+      <span>{error}</span>
+      <button
+        type="button"
+        data-testid="dismiss-persistence-error"
+        onClick={onDismiss}
+        className="rounded-full px-1.5 py-0.5 text-red-500 hover:bg-red-100 hover:text-red-700"
+        aria-label="Dismiss error"
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
+function resolveDisplayProfile(
+  updatedUsername: string | null,
+  currentUsername?: string,
+  currentUserEmail?: string,
+  updatedAvatarUrl?: string | null,
+  currentUserAvatar?: string | null
+) {
+  const username = updatedUsername ?? currentUsername
+  const avatarUrl = updatedAvatarUrl !== undefined ? updatedAvatarUrl : currentUserAvatar
+  const displayName = username || currentUserEmail
+  return { username, avatarUrl, displayName }
 } 
 
 interface ProfileModalProps {
@@ -205,9 +269,13 @@ export function TripMapContainer({
   // The demo map ('default') has no database row; only real trips are persisted.
   const shouldPersist = Boolean(tripId && tripId !== 'default')
 
-  const username = updatedUsername ?? currentUsername
-  const avatarUrl = updatedAvatarUrl !== undefined ? updatedAvatarUrl : currentUserAvatar
-  const displayName = username || currentUserEmail
+  const { username, avatarUrl, displayName } = resolveDisplayProfile(
+    updatedUsername,
+    currentUsername,
+    currentUserEmail,
+    updatedAvatarUrl,
+    currentUserAvatar
+  )
   const confirmedPins = pins.filter((p) => Boolean(p.isConfirmed))
 
   /**
@@ -460,113 +528,23 @@ export function TripMapContainer({
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-950">
       {/* Top Floating Header with Search Bar and Actions */}
-      <header className="absolute top-0 inset-x-0 z-[800] p-4 pointer-events-none flex items-center justify-between gap-3">
-        {/* Left: App Logo Badge & Quick Panels */}
-        <div className="shrink-0 pointer-events-auto flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-900/85 border border-white/10 text-white text-xs font-semibold shadow-lg backdrop-blur-md">
-            <MapPin className="h-4 w-4 text-blue-400" />
-            <span className="hidden sm:inline">PlanIt</span>
-          </div>
+      <MapHeader
+        isTripsCardOpen={isTripsCardOpen}
+        onToggleTripsCard={() => setIsTripsCardOpen((prev) => !prev)}
+        isConfirmedSpotsOpen={isConfirmedSpotsOpen}
+        onToggleConfirmedSpots={() => setIsConfirmedSpotsOpen((prev) => !prev)}
+        confirmedCount={confirmedPins.length}
+        onSelectPlace={handleSelectPlace}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        isProfileOpen={isProfileOpen}
+        onToggleProfile={() => setIsProfileOpen((prev) => !prev)}
+      />
 
-          {/* Button to open member trips card */}
-          <button
-            type="button"
-            data-testid="toggle-trips-card-button"
-            onClick={() => setIsTripsCardOpen((prev) => !prev)}
-            aria-expanded={isTripsCardOpen}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-white text-xs font-semibold shadow-lg backdrop-blur-md transition-colors ${
-              isTripsCardOpen
-                ? 'bg-slate-800 border-white/30 text-sky-300'
-                : 'bg-slate-900/85 hover:bg-slate-800 border-white/10'
-            }`}
-            title="My Trips"
-          >
-            <Compass className="h-3.5 w-3.5 text-blue-400" />
-            <span>Trips</span>
-          </button>
-
-          {/* Button to open confirmed spots list */}
-          <button
-            type="button"
-            data-testid="toggle-confirmed-spots-button"
-            onClick={() => setIsConfirmedSpotsOpen((prev) => !prev)}
-            aria-expanded={isConfirmedSpotsOpen}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-xs font-semibold shadow-lg backdrop-blur-md transition-colors ${
-              isConfirmedSpotsOpen
-                ? 'bg-amber-500 border-amber-300 text-white'
-                : 'bg-slate-900/85 hover:bg-slate-800 border-white/10 text-amber-300'
-            }`}
-            title="Confirmed Spots"
-          >
-            <CheckCircle2 className="h-3.5 w-3.5 text-amber-400" />
-            <span>Confirmed ({confirmedPins.length})</span>
-          </button>
-        </div>
-
-        {/* Center: Simple Search Bar */}
-        <div className="pointer-events-auto flex-1 max-w-md mx-auto">
-          <SearchBar
-            onSelectPlace={handleSelectPlace}
-            placeholder="Search places across the map..."
-          />
-        </div>
-
-        {/* Right: User Profile Button & Sign Out */}
-        <div className="shrink-0 pointer-events-auto flex items-center gap-2">
-          {displayName && (
-            <button
-              type="button"
-              onClick={() => setIsProfileOpen((prev) => !prev)}
-              aria-expanded={isProfileOpen}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
-              title={displayName}
-            >
-              <span className="relative flex h-6 w-6 shrink-0 overflow-hidden rounded-full border border-white/20 bg-slate-800">
-                <img
-                  src={avatarUrl || '/no_pic.png'}
-                  alt={displayName}
-                  onError={(e) => {
-                    e.currentTarget.src = '/no_pic.png'
-                  }}
-                  className="h-full w-full object-cover"
-                />
-              </span>
-              <span className="hidden md:inline font-medium text-slate-200">
-                {displayName}
-              </span>
-            </button>
-          )}
-          <form action={async () => { await logout() }}>
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 hover:bg-slate-800 text-white text-xs font-semibold border border-white/10 shadow-lg backdrop-blur-md transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Sign out</span>
-            </button>
-          </form>
-        </div>
-      </header>
-
-      {persistenceError && (
-        <div
-          role="alert"
-          data-testid="pin-persistence-error"
-          className="absolute top-20 left-1/2 z-[870] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-xs font-medium text-red-800 shadow-lg"
-        >
-          <span>{persistenceError}</span>
-          <button
-            type="button"
-            data-testid="dismiss-persistence-error"
-            onClick={() => setPersistenceError(null)}
-            className="rounded-full px-1.5 py-0.5 text-red-500 hover:bg-red-100 hover:text-red-700"
-            aria-label="Dismiss error"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+      <PersistenceAlert
+        error={persistenceError}
+        onDismiss={() => setPersistenceError(null)}
+      />
 
       {/* Floating Member Trips Card */}
       <TripsCard

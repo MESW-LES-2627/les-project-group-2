@@ -138,35 +138,36 @@ export async function leaveTrip(formData: FormData) {
     redirect('/dashboard')
 }
 
-/**
- * Promotes a trip member to organizer, demoting the current organizer to member.
- * Can be called with FormData (for form actions) or tripId and memberId strings.
- *
- * @param formDataOrTripId FormData containing tripId and memberId, or tripId string
- * @param maybeMemberId The user ID of the member to promote (if first arg is tripId string)
- */
-export async function promoteToOrganizer(
+function parsePromoteArgs(
     formDataOrTripId: FormData | string,
     maybeMemberId?: string
-) {
-    let tripId: string
-    let memberId: string
-
+): { tripId: string; memberId: string } {
     if (formDataOrTripId instanceof FormData) {
-        tripId = getRequiredFormValue(formDataOrTripId, 'tripId')
-        memberId = getRequiredFormValue(formDataOrTripId, 'memberId')
-    } else {
-        tripId = String(formDataOrTripId ?? '').trim()
-        memberId = String(maybeMemberId ?? '').trim()
-        if (!tripId) {
-            throw new Error('tripId is required.')
-        }
-        if (!memberId) {
-            throw new Error('memberId is required.')
+        return {
+            tripId: getRequiredFormValue(formDataOrTripId, 'tripId'),
+            memberId: getRequiredFormValue(formDataOrTripId, 'memberId'),
         }
     }
+    const tripId = String(formDataOrTripId ?? '').trim()
+    const memberId = String(maybeMemberId ?? '').trim()
+    if (!tripId) {
+        throw new Error('tripId is required.')
+    }
+    if (!memberId) {
+        throw new Error('memberId is required.')
+    }
+    return { tripId, memberId }
+}
 
-    const {supabase, user} = await getAuthenticatedUser()
+async function assertCanPromote(
+    supabase: Awaited<ReturnType<typeof getAuthenticatedUser>>['supabase'],
+    tripId: string,
+    currentUserId: string,
+    targetMemberId: string
+) {
+    if (targetMemberId === currentUserId) {
+        throw new Error('The organizer cannot promote themselves.')
+    }
 
     const {data: trip, error: tripError} = await supabase
         .from('trips')
@@ -179,19 +180,15 @@ export async function promoteToOrganizer(
         throw new Error(`Could not check trip permissions: ${tripError.message}`)
     }
 
-    if (!trip || trip.organizer_id !== user.id) {
+    if (!trip || trip.organizer_id !== currentUserId) {
         throw new Error('Only the trip organizer can promote members.')
-    }
-
-    if (memberId === user.id) {
-        throw new Error('The organizer cannot promote themselves.')
     }
 
     const {data: targetMember, error: targetMemberError} = await supabase
         .from('trip_members')
         .select('role')
         .eq('trip_id', tripId)
-        .eq('user_id', memberId)
+        .eq('user_id', targetMemberId)
         .maybeSingle()
 
     if (targetMemberError) {
@@ -202,8 +199,25 @@ export async function promoteToOrganizer(
     if (!targetMember || targetMember.role !== 'member') {
         throw new Error('Trip member not found.')
     }
+}
 
-    const {error: rpcError} = await supabase.rpc('promote_to_organizer', {
+/**
+ * Promotes a trip member to organizer, demoting the current organizer to member.
+ * Can be called with FormData (for form actions) or tripId and memberId strings.
+ *
+ * @param formDataOrTripId FormData containing tripId and memberId, or tripId string
+ * @param maybeMemberId The user ID of the member to promote (if first arg is tripId string)
+ */
+export async function promoteToOrganizer(
+    formDataOrTripId: FormData | string,
+    maybeMemberId?: string
+) {
+    const { tripId, memberId } = parsePromoteArgs(formDataOrTripId, maybeMemberId)
+    const { supabase, user } = await getAuthenticatedUser()
+
+    await assertCanPromote(supabase, tripId, user.id, memberId)
+
+    const { error: rpcError } = await supabase.rpc('promote_to_organizer', {
         p_trip_id: tripId,
         p_new_organizer_id: memberId,
     })
@@ -220,7 +234,7 @@ export async function promoteToOrganizer(
         redirect(`/trips/${tripId}`)
     }
 
-    return {success: true}
+    return { success: true }
 }
 
 export const transferOrganizerRole = promoteToOrganizer

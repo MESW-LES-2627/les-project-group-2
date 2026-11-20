@@ -12,6 +12,7 @@ import { ChevronDown, ChevronUp, MapPin, X } from 'lucide-react'
 import {
   getUserMemberTrips,
   type UserMemberTrip,
+  type TripDateItem,
 } from '@/app/trips/actions/get-member-trips'
 import { formatEventDate } from '@/utils/date-formatter'
 

@@ -63,6 +63,65 @@ async function getAuthAndPin(tripId: string, pinId: string) {
   return { supabase, user, trip, pin }
 }
 
+function isValidAuthContext(context: Awaited<ReturnType<typeof getAuthAndPin>>): context is {
+  supabase: NonNullable<Awaited<ReturnType<typeof getAuthAndPin>>['supabase']>
+  user: NonNullable<Awaited<ReturnType<typeof getAuthAndPin>>['user']>
+  trip: NonNullable<Awaited<ReturnType<typeof getAuthAndPin>>['trip']>
+  pin: NonNullable<Awaited<ReturnType<typeof getAuthAndPin>>['pin']>
+} {
+  return !context.error && Boolean(context.supabase && context.user && context.trip && context.pin)
+}
+
+function checkPinPermission(
+  trip: { organizer_id: string },
+  pin: { proposed_by: string; is_confirmed?: boolean | null },
+  user: { id: string; email?: string | null },
+  action: 'edit' | 'delete'
+): string | null {
+  const isOrganizer = trip.organizer_id === user.id
+  const userEmail = user.email || ''
+  const isCreator = pin.proposed_by === userEmail || pin.proposed_by === user.id
+
+  if (pin.is_confirmed && !isOrganizer) {
+    return action === 'edit'
+      ? 'Only the trip organizer can edit a confirmed pin.'
+      : 'Only the trip organizer can delete a confirmed pin.'
+  }
+
+  if (!isCreator && !isOrganizer) {
+    return action === 'edit'
+      ? 'You do not have permission to edit this pin.'
+      : 'You do not have permission to delete this pin.'
+  }
+
+  return null
+}
+
+function validatePinUpdateInput(input: PinUpdateInput): string | null {
+  if (input.lat !== undefined && input.lng !== undefined) {
+    if (!isValidCoordinate(input.lat, input.lng)) {
+      return 'Invalid geographical coordinates.'
+    }
+  }
+
+  if (input.name !== undefined && !input.name.trim()) {
+    return 'Pin name cannot be empty.'
+  }
+
+  return null
+}
+
+function buildPinUpdatePayload(input: PinUpdateInput): Record<string, unknown> {
+  const updates: Record<string, unknown> = {}
+  if (input.name !== undefined) updates.name = input.name.trim()
+  if (input.description !== undefined) updates.description = input.description
+  if (input.category !== undefined) updates.category = input.category
+  if (input.lat !== undefined) updates.lat = input.lat
+  if (input.lng !== undefined) updates.lng = input.lng
+  if (input.date !== undefined) updates.date = input.date
+  return updates
+}
+
 /**
  * @brief Updates an existing pin's properties (name, description, category, location, date).
  * Ensures only the creator (for proposed pins) or the trip organizer (for proposed and confirmed pins) can edit.
@@ -81,44 +140,21 @@ export async function updatePinAction(
   }
 
   const context = await getAuthAndPin(tripId, pinId)
-  if (context.error || !context.supabase || !context.user || !context.trip || !context.pin) {
+  if (!isValidAuthContext(context)) {
     return { error: context.error }
   }
 
-  const isOrganizer = context.trip.organizer_id === context.user.id
-  const isCreator =
-    context.pin.proposed_by === (context.user.email || '') ||
-    context.pin.proposed_by === context.user.id
-
-  // Rule: If pin is confirmed, only organizer can edit.
-  if (context.pin.is_confirmed && !isOrganizer) {
-    return { error: 'Only the trip organizer can edit a confirmed pin.' }
+  const permError = checkPinPermission(context.trip, context.pin, context.user, 'edit')
+  if (permError) {
+    return { error: permError }
   }
 
-  // Rule: If proposed, only creator or organizer can edit.
-  if (!isCreator && !isOrganizer) {
-    return { error: 'You do not have permission to edit this pin.' }
+  const inputError = validatePinUpdateInput(input)
+  if (inputError) {
+    return { error: inputError }
   }
 
-  // Validate coordinates if provided
-  if (input.lat !== undefined && input.lng !== undefined) {
-    if (!isValidCoordinate(input.lat, input.lng)) {
-      return { error: 'Invalid geographical coordinates.' }
-    }
-  }
-
-  // Validate name if provided
-  if (input.name !== undefined && !input.name.trim()) {
-    return { error: 'Pin name cannot be empty.' }
-  }
-
-  const updates: Record<string, unknown> = {}
-  if (input.name !== undefined) updates.name = input.name.trim()
-  if (input.description !== undefined) updates.description = input.description
-  if (input.category !== undefined) updates.category = input.category
-  if (input.lat !== undefined) updates.lat = input.lat
-  if (input.lng !== undefined) updates.lng = input.lng
-  if (input.date !== undefined) updates.date = input.date
+  const updates = buildPinUpdatePayload(input)
 
   const { error: updateError } = await context.supabase
     .from('pins')
@@ -151,23 +187,13 @@ export async function deletePinAction(
   }
 
   const context = await getAuthAndPin(tripId, pinId)
-  if (context.error || !context.supabase || !context.user || !context.trip || !context.pin) {
+  if (!isValidAuthContext(context)) {
     return { error: context.error }
   }
 
-  const isOrganizer = context.trip.organizer_id === context.user.id
-  const isCreator =
-    context.pin.proposed_by === (context.user.email || '') ||
-    context.pin.proposed_by === context.user.id
-
-  // Rule: If pin is confirmed, only organizer can delete.
-  if (context.pin.is_confirmed && !isOrganizer) {
-    return { error: 'Only the trip organizer can delete a confirmed pin.' }
-  }
-
-  // Rule: If proposed, creator or organizer can delete.
-  if (!isCreator && !isOrganizer) {
-    return { error: 'You do not have permission to delete this pin.' }
+  const permError = checkPinPermission(context.trip, context.pin, context.user, 'delete')
+  if (permError) {
+    return { error: permError }
   }
 
   // Delete votes associated with the pin first

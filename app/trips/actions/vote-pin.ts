@@ -91,6 +91,28 @@ async function fetchPinVoters(
   return allVotes.map((v) => v.user_email)
 }
 
+async function checkPinConfirmed(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  pinId: string
+): Promise<string | null> {
+  const { data: pinRecord, error: pinError } = await supabase
+    .from('pins')
+    .select('is_confirmed')
+    .eq('id', pinId)
+    .maybeSingle()
+
+  if (pinError) {
+    console.error('Error checking pin status:', pinError)
+    return 'Failed to verify pin status.'
+  }
+
+  if (pinRecord?.is_confirmed) {
+    return 'Voting is closed because this pin has been confirmed.'
+  }
+
+  return null
+}
+
 /**
  * @brief Server action to toggle a vote on a proposed pin.
  * Enforces authentication, date scoping, and idempotency (prevents duplicate votes).
@@ -118,36 +140,17 @@ export async function togglePinVoteAction(
     return { error: 'Authentication required.' }
   }
 
-  const userEmail = user.email || 'anonymous@planit.app'
-
-  // Check if pin is confirmed (voting is closed on confirmed pins)
-  const { data: pinRecord, error: pinError } = await supabase
-    .from('pins')
-    .select('is_confirmed')
-    .eq('id', pinId)
-    .maybeSingle()
-
-  if (pinError) {
-    console.error('Error checking pin status:', pinError)
-    return { error: 'Failed to verify pin status.' }
+  const confirmError = await checkPinConfirmed(supabase, pinId)
+  if (confirmError) {
+    return { error: confirmError }
   }
 
-  if (pinRecord?.is_confirmed) {
-    return { error: 'Voting is closed because this pin has been confirmed.' }
-  }
-
-  // Query existing vote for this user, pin, and targetDate
-  let query = supabase
-    .from('pin_votes')
-    .select('id')
-    .eq('pin_id', pinId)
-    .eq('user_id', user.id)
-
-  if (targetDate) {
-    query = query.eq('trip_date', targetDate)
-  }
-
-  const { data: existingVote, error: queryError } = await query.maybeSingle()
+  const { data: existingVote, error: queryError } = await findExistingVote(
+    supabase,
+    pinId,
+    user.id,
+    targetDate
+  )
 
   if (queryError) {
     console.error('Error querying pin vote:', queryError)
