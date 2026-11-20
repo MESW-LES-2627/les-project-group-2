@@ -2,7 +2,7 @@
 
 /**
  * @file components/map/PinVoteCard.tsx
- * @brief Interactive card for viewing pin details, casting and removing votes directly on the map.
+ * @brief Interactive card for viewing pin details, casting votes, editing/deleting pins, and confirming to the itinerary.
  */
 
 import React, { useState } from 'react'
@@ -13,27 +13,25 @@ import {
   getPinVoteCount,
   getPinVoters,
   hasUserVoted,
-  isPinCommitted,
 } from '@/types/map'
 import { toggleVoteOnPin } from '@/services/pin-votes'
-import { toggleCommitPinAction, deletePinAction } from '@/app/trips/actions/pins'
-import { togglePinVoteAction } from '@/app/trips/actions/vote-pin'
-import { removePinFromTrip } from '@/services/pin-storage'
-import { Trash2 } from 'lucide-react'
+import { canEditPin, canDeletePin } from '@/services/pin-management'
+import { Edit2, Trash2 } from 'lucide-react'
 
 interface PinVoteCardProps {
   pin: Pin
   currentUserEmail?: string
   currentUserId?: string
   isOrganizer?: boolean
-  tripId?: string
   onVoteChange?: (updatedPin: Pin) => void
-  onDeletePin?: (pinId: string) => void
+  onConfirmToggle?: (updatedPin: Pin) => void
+  onEdit?: (pin: Pin) => void
+  onDelete?: (pinId: string) => void
   onClose?: () => void
 }
 
 /**
- * @brief In-place pin details and voting card rendered directly over the map workspace.
+ * @brief In-place pin details, voting, edit, delete, and confirmation card rendered over the map workspace.
  * @param props Component properties containing target pin and callbacks.
  */
 export function PinVoteCard({
@@ -41,24 +39,32 @@ export function PinVoteCard({
   currentUserEmail = 'member@planit.app',
   currentUserId,
   isOrganizer = false,
-  tripId,
   onVoteChange,
-  onDeletePin,
+  onConfirmToggle,
+  onEdit,
+  onDelete,
   onClose,
 }: PinVoteCardProps) {
+  const [prevPin, setPrevPin] = useState<Pin>(pin)
   const [currentPin, setCurrentPin] = useState<Pin>(pin)
-  const [isCommitting, setIsCommitting] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+
+  if (pin !== prevPin) {
+    setPrevPin(pin)
+    setCurrentPin(pin)
+  }
 
   const voteCount = getPinVoteCount(currentPin)
   const voters = getPinVoters(currentPin)
   const userHasVoted = hasUserVoted(currentPin, currentUserEmail)
-  const isCommitted = isPinCommitted(currentPin)
+  const isConfirmed = Boolean(currentPin.isConfirmed)
+  const canEdit = canEditPin(currentPin, currentUserEmail, isOrganizer)
+  const canDelete = canDeletePin(currentPin, currentUserEmail, isOrganizer)
 
   /**
-   * @brief Handles toggling vote on the pin for the current user and persisting to database.
+   * @brief Handles toggling vote on the pin for the current user.
    */
   const handleToggleVote = () => {
+    if (isConfirmed) return
     const updated = toggleVoteOnPin(
       currentPin,
       {
@@ -69,73 +75,33 @@ export function PinVoteCard({
     )
     setCurrentPin(updated)
     onVoteChange?.(updated)
-
-    const effectiveTripId = tripId
-    if (effectiveTripId && effectiveTripId !== 'default') {
-      togglePinVoteAction(effectiveTripId, currentPin.id, currentPin.date).catch((err) => {
-        console.error('Failed to cast vote on database:', err)
-      })
-    }
   }
 
   /**
-   * @brief Handles toggling the commit status of the pin for trip organizers.
+   * @brief Handles confirming the pin to become part of the official itinerary.
    */
-  const handleToggleCommit = async () => {
-    setIsCommitting(true)
-    const nextStatus = !isCommitted
-    const effectiveTripId = tripId
-
-    if (effectiveTripId && effectiveTripId !== 'default') {
-      try {
-        await toggleCommitPinAction(effectiveTripId, currentPin.id)
-      } catch (err) {
-        console.error('Failed to toggle commit status:', err)
-      }
-    }
-
+  const handleConfirm = () => {
     const updated: Pin = {
       ...currentPin,
-      commited: nextStatus,
-      committed: nextStatus,
+      isConfirmed: true,
     }
     setCurrentPin(updated)
-    onVoteChange?.(updated)
-    setIsCommitting(false)
+    onConfirmToggle?.(updated)
   }
 
   /**
-   * @brief Handles deleting the pin by the trip organizer.
+   * @brief Handles reverting a confirmed pin back to proposed state.
    */
-  const handleDeletePin = async () => {
-    if (!isOrganizer) return
-
-    setIsDeleting(true)
-    const effectiveTripId = tripId
-
-    if (effectiveTripId && effectiveTripId !== 'default') {
-      try {
-        const res = await deletePinAction(effectiveTripId, currentPin.id)
-        if (res?.error) {
-          console.error('Failed to delete pin:', res.error)
-          setIsDeleting(false)
-          return
-        }
-      } catch (err) {
-        console.error('Failed to delete pin:', err)
-        setIsDeleting(false)
-        return
-      }
-    } else if (effectiveTripId) {
-      removePinFromTrip(effectiveTripId, currentPin.id)
+  const handleRevert = () => {
+    const updated: Pin = {
+      ...currentPin,
+      isConfirmed: false,
     }
-
-    onDeletePin?.(currentPin.id)
-    onClose?.()
-    setIsDeleting(false)
+    setCurrentPin(updated)
+    onConfirmToggle?.(updated)
   }
 
-  const categoryColor = isCommitted ? '#ef4444' : getCategoryColor(currentPin.category)
+  const categoryColor = getCategoryColor(currentPin.category)
 
   return (
     <div
@@ -153,12 +119,13 @@ export function PinVoteCard({
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               {getCategoryLabel(currentPin.category)}
             </span>
-            {isCommitted && (
+
+            {isConfirmed && (
               <span
-                data-testid="pin-committed-badge"
-                className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700"
+                data-testid="pin-confirmed-badge"
+                className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800 border border-amber-300"
               >
-                In itinerary
+                ★ Confirmed Spot
               </span>
             )}
           </div>
@@ -201,54 +168,8 @@ export function PinVoteCard({
         </p>
       )}
 
-      {/* Organizer Controls */}
-      {isOrganizer && (
-        <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <span className="text-xs font-semibold text-slate-700">
-                Itinerary:
-              </span>
-              <p className="text-[11px] text-slate-500">
-                {isCommitted ? 'Part of itinerary' : 'Not committed'}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              data-testid="toggle-commit-pin-button"
-              onClick={handleToggleCommit}
-              disabled={isCommitting || isDeleting}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition ${
-                isCommitted
-                  ? 'bg-red-100 text-red-800 hover:bg-red-200 border border-red-300'
-                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
-              }`}
-            >
-              {isCommitted ? 'Uncommit' : 'Commit'}
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between pt-1 border-t border-slate-50">
-            <span className="text-xs font-semibold text-slate-700">
-              Pin:
-            </span>
-            <button
-              type="button"
-              data-testid="remove-pin-button"
-              onClick={handleDeletePin}
-              disabled={isDeleting || isCommitting}
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200 shadow-sm transition disabled:opacity-50"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span data-testid="delete-pin-button">Remove pin</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Voting Section */}
-      <div className="mt-3.5 pt-3 border-t border-slate-100">
+      <div className="mt-4 pt-3.5 border-t border-slate-100">
         <div className="flex items-center justify-between gap-2">
           <div>
             <span
@@ -266,20 +187,86 @@ export function PinVoteCard({
             </p>
           </div>
 
-          <button
-            type="button"
-            data-testid="vote-pin-button"
-            onClick={handleToggleVote}
-            className={`rounded-full px-4 py-2 text-xs font-semibold shadow-sm transition ${
-              userHasVoted
-                ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            {userHasVoted ? 'Remove vote' : 'Vote'}
-          </button>
+          {isConfirmed ? (
+            <span
+              data-testid="voting-closed-badge"
+              className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-500 border border-slate-200"
+            >
+              Voting closed
+            </span>
+          ) : (
+            <button
+              type="button"
+              data-testid="vote-pin-button"
+              onClick={handleToggleVote}
+              className={`rounded-full px-4 py-2 text-xs font-semibold shadow-sm transition ${
+                userHasVoted
+                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {userHasVoted ? 'Remove vote' : 'Vote'}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Edit and Delete Actions */}
+      {(canEdit || canDelete) && (
+        <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          {canEdit && (
+            <button
+              type="button"
+              data-testid="edit-pin-button"
+              onClick={() => onEdit?.(currentPin)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
+              title="Edit pin details"
+            >
+              <Edit2 className="h-3 w-3" />
+              <span>Edit</span>
+            </button>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              data-testid="delete-pin-button"
+              onClick={() => onDelete?.(currentPin.id)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 transition"
+              title="Delete pin"
+            >
+              <Trash2 className="h-3 w-3" />
+              <span>Delete</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Organizer Action: Confirm or Revert Pin */}
+      {isOrganizer && (
+        <div className="mt-3.5 pt-3 border-t border-slate-100">
+          {!isConfirmed ? (
+            <button
+              type="button"
+              data-testid="confirm-pin-button"
+              onClick={handleConfirm}
+              className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition"
+            >
+              <span>★</span>
+              <span>Confirm Spot</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              data-testid="revert-pin-button"
+              onClick={handleRevert}
+              className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 border border-slate-300 transition"
+            >
+              <span>↺</span>
+              <span>Revert to Proposed</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

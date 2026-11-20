@@ -130,7 +130,7 @@ describe('Trip workspace page', () => {
                 {
                     user_id: 'user-1',
                     email: 'organizer@example.com',
-                    display_name: 'Trip organizer',
+                    display_name: 'Organizer',
                     role: 'organizer',
                 },
                 {
@@ -214,13 +214,9 @@ describe('Trip workspace page', () => {
         expect(screen.getByText('Trip Member', {selector: 'p'})).toBeTruthy()
         expect(screen.getByText('member@example.com')).toBeTruthy()
         expect(screen.getByText('organizer')).toBeTruthy()
-        expect(screen.getByRole('button', {name: 'Promote to organizer'})).toBeTruthy()
         expect(screen.getByRole('button', {name: 'Remove member'})).toBeTruthy()
         expect(screen.getByRole('link', {name: /map/i}).getAttribute('href')).toBe(
-            '/dashboard'
-        )
-        expect(screen.getByRole('link', {name: /itinerary/i}).getAttribute('href')).toBe(
-            '/trips/trip-1/itinerary'
+            '/trips/trip-1/map'
         )
         expect(screen.getByText('Delete this trip')).toBeTruthy()
         expect(
@@ -236,12 +232,11 @@ describe('Trip workspace page', () => {
 
         await renderContent()
 
-        expect(screen.getAllByText('Trip organizer').length).toBeGreaterThan(0)
+        expect(screen.getByText('Trip organizer')).toBeTruthy()
         expect(screen.queryByText('Edit trip details')).toBeNull()
         expect(screen.queryByText('Delete this trip')).toBeNull()
         expect(screen.getByRole('button', {name: 'Leave trip'})).toBeTruthy()
         expect(screen.queryByRole('button', {name: 'Remove member'})).toBeNull()
-        expect(screen.queryByRole('button', {name: 'Promote to organizer'})).toBeNull()
     })
 
     it('shows the candidate date windows to every member', async () => {
@@ -416,6 +411,23 @@ describe('Trip workspace page', () => {
             'Error fetching itinerary days:',
             databaseError
         )
+    })
+
+    it('shows best-date suggestions to the organizer only', async () => {
+        await renderContent()
+
+        expect(screen.getByText('Suggested dates')).toBeTruthy()
+        expect(screen.getByRole('button', {name: 'Use these dates'})).toBeTruthy()
+
+        cleanup()
+        getUser.mockResolvedValueOnce({
+            data: {user: {id: 'member-2'}},
+            error: null,
+        })
+
+        await renderContent()
+
+        expect(screen.queryByText('Suggested dates')).toBeNull()
     })
 
     it('renders an error message when the trip query fails', async () => {

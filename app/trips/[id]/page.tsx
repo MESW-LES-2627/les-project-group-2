@@ -11,9 +11,9 @@ import {InviteSettings} from './invite-settings'
 import {DateWindows} from './date-windows'
 import {AvailabilityCalendar} from './availability-calendar'
 import {LockDates} from './lock-dates'
-import {PromoteToOrganizerButton} from './promote-member-button'
 import type {DateWindow} from '@/utils/date-windows'
 import {buildAvailabilityCalendar, type AvailabilityRow} from '@/utils/availability'
+import {groupAvailableByDay} from '@/utils/best-dates'
 
 type TripWorkspacePageProps = {
     params: Promise<{ id: string }>
@@ -26,35 +26,20 @@ type TripMember = {
     role: 'organizer' | 'member'
 }
 
-function getOrganizer(tripMembers: TripMember[]) {
-  for (const men of tripMembers) {
-    if (men.role === 'organizer') return men.display_name
-  }
-  return 'Trip organizer'
-}
-
-function getSections(tripId: string) {
-  return [
+const sections = [
     {
-      title: 'Map',
-      description: 'Discover places and explore destinations.',
-      icon: '🗺️',
-      link: '/dashboard',
+        title: 'Itinerary',
+        description: 'Build your plans and organize activities.',
+        icon: '🧭',
+        status: 'Coming soon',
     },
     {
-      title: 'Itinerary',
-      description: 'Build your plans and organize activities.',
-      icon: '🧭',
-      link: `/trips/${tripId}/itinerary`,
+        title: 'Expenses',
+        description: 'Keep track of costs and shared expenses.',
+        icon: '💳',
+        status: 'Coming soon',
     },
-    {
-      title: 'Expenses',
-      description: 'Keep track of costs and shared expenses.',
-      icon: '💳',
-      link: '',
-    },
-  ]
-}
+]
 
 export default function TripWorkspacePage({
                                               params,
@@ -290,7 +275,7 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                                 Organizer
                             </p>
                             <p className="mt-1 font-semibold text-gray-800">
-                                {isOrganizer ? 'You' : getOrganizer(tripMembers)}
+                                {isOrganizer ? 'You' : 'Trip organizer'}
                             </p>
                         </div>
                     </div>
@@ -424,26 +409,20 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                                     </span>
                                 </div>
                                 {isOrganizer && member.role === 'member' && (
-                                    <div className="flex items-center gap-4">
-                                        <PromoteToOrganizerButton
-                                            tripId={id}
-                                            memberId={member.user_id}
+                                    <form action={removeTripMember}>
+                                        <input type="hidden" name="tripId" value={id}/>
+                                        <input
+                                            type="hidden"
+                                            name="memberId"
+                                            value={member.user_id}
                                         />
-                                        <form action={removeTripMember}>
-                                            <input type="hidden" name="tripId" value={id}/>
-                                            <input
-                                                type="hidden"
-                                                name="memberId"
-                                                value={member.user_id}
-                                            />
-                                            <button
-                                                type="submit"
-                                                className="text-sm font-semibold text-red-700 transition hover:text-red-900"
-                                            >
-                                                Remove member
-                                            </button>
-                                        </form>
-                                    </div>
+                                        <button
+                                            type="submit"
+                                            className="text-sm font-semibold text-red-700 transition hover:text-red-900"
+                                        >
+                                            Remove member
+                                        </button>
+                                    </form>
                                 )}
                             </li>
                         ))}
@@ -465,6 +444,9 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                     lockedStart={trip.locked_start_date ?? null}
                     lockedEnd={trip.locked_end_date ?? null}
                     itineraryDayCount={itineraryDays?.length ?? 0}
+                    members={tripMembers.map(({user_id, display_name}) => ({user_id, display_name}))}
+                    availableByDay={groupAvailableByDay(availabilityRows)}
+                    hasAnswers={availabilityRows.length > 0}
                 />
 
                 <DateWindows
@@ -497,35 +479,57 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                      {getSections(id).map((section) => (
+                        {/* Map */}
                         <Link
-                          key={section.title}
-                          href={section.link || '#'}
+                            href={`/trips/${id}/map`}
+                            className="group flex items-center gap-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-6 transition hover:-translate-y-1 hover:border-blue-200 hover:bg-blue-50 hover:shadow-md"
                         >
-                          <div
-                              key={section.title}
-                              className="flex items-center gap-5 rounded-2xl border border-gray-100 bg-white p-6 transition hover:-translate-y-1 hover:border-gray-200 hover:shadow-md"
-                          >
-                              <div
-                                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gray-50 text-2xl"
-                              >
-                                  {section.icon}
-                              </div>
+                            <div
+                                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">
+                                🗺️
+                            </div>
 
-                              <div className="min-w-0 flex-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                      <h3 className="font-semibold text-gray-900">
-                                          {section.title}
-                                      </h3>
-                                  </div>
+                            <div className="min-w-0 flex-1">
+                                <h3 className="font-semibold text-gray-900">
+                                    Map
+                                </h3>
+                                <p className="mt-1 text-sm text-gray-500">
+                                    Discover places and explore destinations.
+                                </p>
+                            </div>
 
-                                  <p className="mt-1 text-sm leading-relaxed text-gray-500">
-                                      {section.description}
-                                  </p>
-                              </div>
-                          </div>
+                            <span className="text-xl text-blue-600 transition group-hover:translate-x-1">
+                                →
+                            </span>
                         </Link>
-                      ))}
+
+                        {sections.map((section) => (
+                            <div
+                                key={section.title}
+                                className="flex items-center gap-5 rounded-2xl border border-gray-100 bg-white p-6 transition hover:-translate-y-1 hover:border-gray-200 hover:shadow-md"
+                            >
+                                <div
+                                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gray-50 text-2xl">
+                                    {section.icon}
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="font-semibold text-gray-900">
+                                            {section.title}
+                                        </h3>
+                                        <span
+                                            className="rounded-full bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-500">
+                                            {section.status}
+                                        </span>
+                                    </div>
+
+                                    <p className="mt-1 text-sm leading-relaxed text-gray-500">
+                                        {section.description}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </section>
 

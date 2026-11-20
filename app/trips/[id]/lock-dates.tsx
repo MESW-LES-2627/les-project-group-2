@@ -5,9 +5,11 @@
  * @brief Official trip dates: shown to every member, locked and unlocked by the organizer (US-2.3).
  */
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { lockTripDates, unlockTripDates } from '@/app/trips/actions/lock-dates'
 import { DATES_LOCKED_STATE, validateLockRange } from '@/utils/trip-lock'
+import { defaultTripLength, suggestBestDates, type SuggestionMember } from '@/utils/best-dates'
+import { BestDateSuggestions } from './best-date-suggestions'
 import type { DateWindow } from '@/utils/date-windows'
 
 interface LockDatesProps {
@@ -17,6 +19,9 @@ interface LockDatesProps {
   lockedStart: string | null
   lockedEnd: string | null
   itineraryDayCount: number
+  members?: SuggestionMember[]
+  availableByDay?: Record<string, string[]>
+  hasAnswers?: boolean
 }
 
 const inputClass =
@@ -47,20 +52,26 @@ export function LockDates({
   lockedStart,
   lockedEnd,
   itineraryDayCount,
+  members = [],
+  availableByDay = {},
+  hasAnswers = false,
 }: LockDatesProps) {
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [tripLength, setTripLength] = useState(() => defaultTripLength(windows))
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const isLocked = lockedStart !== null && lockedEnd !== null
+  const suggestions = useMemo(
+    () => suggestBestDates(windows, availableByDay, members, tripLength),
+    [windows, availableByDay, members, tripLength]
+  )
 
   /**
    * @brief Validates the chosen range, asks for confirmation and locks the dates.
    */
   const handleLock = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const formData = new FormData(event.currentTarget)
-    const startDate = String(formData.get('startDate') ?? '')
-    const endDate = String(formData.get('endDate') ?? '')
-
     const validationError = validateLockRange(startDate, endDate, windows)
     if (validationError) {
       setError(validationError)
@@ -155,13 +166,27 @@ export function LockDates({
                 <label htmlFor="lock-start" className="mb-2 block text-sm font-medium text-gray-700">
                   Trip start
                 </label>
-                <input id="lock-start" name="startDate" type="date" className={inputClass} />
+                <input
+                  id="lock-start"
+                  name="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  className={inputClass}
+                />
               </div>
               <div>
                 <label htmlFor="lock-end" className="mb-2 block text-sm font-medium text-gray-700">
                   Trip end
                 </label>
-                <input id="lock-end" name="endDate" type="date" className={inputClass} />
+                <input
+                  id="lock-end"
+                  name="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  className={inputClass}
+                />
               </div>
               <div className="sm:col-span-2">
                 <button
@@ -173,6 +198,20 @@ export function LockDates({
                 </button>
               </div>
             </form>
+          )}
+
+          {isOrganizer && windows.length > 0 && (
+            <BestDateSuggestions
+              suggestions={suggestions}
+              tripLength={tripLength}
+              hasAnswers={hasAnswers}
+              onLengthChange={setTripLength}
+              onSelect={(suggestion) => {
+                setStartDate(suggestion.start)
+                setEndDate(suggestion.end)
+                setError(null)
+              }}
+            />
           )}
         </div>
       )}

@@ -154,4 +154,64 @@ describe('LockDates', () => {
 
     expect((await screen.findByRole('alert')).textContent).toBe('The trip dates are not locked.')
   })
+
+  describe('best-date suggestions', () => {
+    const members = [
+      { user_id: 'ana', display_name: 'Ana' },
+      { user_id: 'bruno', display_name: 'Bruno' },
+    ]
+    const availableByDay = {
+      '2099-07-02': ['ana', 'bruno'],
+      '2099-07-03': ['ana', 'bruno'],
+      '2099-07-04': ['ana', 'bruno'],
+      '2099-07-05': ['ana'],
+    }
+
+    it('pre-fills the lock form when the organizer picks a suggestion', async () => {
+      renderLockDates({ members, availableByDay, hasAnswers: true })
+
+      fireEvent.change(screen.getByLabelText('Trip length (days)'), { target: { value: '3' } })
+      expect(screen.getByText(/2 Jul 2099 → 4 Jul 2099/, { selector: 'p' })).toBeTruthy()
+      fireEvent.click(screen.getAllByRole('button', { name: 'Use these dates' })[0])
+
+      expect((document.getElementById('lock-start') as HTMLInputElement).value).toBe('2099-07-02')
+      expect((document.getElementById('lock-end') as HTMLInputElement).value).toBe('2099-07-04')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lock dates' }))
+      await waitFor(() =>
+        expect(actions.lockTripDates).toHaveBeenCalledWith('trip-1', '2099-07-02', '2099-07-04')
+      )
+    })
+
+    it('defaults the trip length to the shortest candidate window', () => {
+      renderLockDates({ members, availableByDay, hasAnswers: true })
+
+      expect((screen.getByLabelText('Trip length (days)') as HTMLInputElement).value).toBe('10')
+    })
+
+    it('is not shown to members', () => {
+      renderLockDates({ isOrganizer: false, members, availableByDay, hasAnswers: true })
+
+      expect(screen.queryByText('Suggested dates')).toBeNull()
+    })
+
+    it('is not shown without candidate windows', () => {
+      renderLockDates({ windows: [], members, availableByDay, hasAnswers: true })
+
+      expect(screen.queryByText('Suggested dates')).toBeNull()
+    })
+
+    it('is not shown once the dates are locked', () => {
+      renderLockDates({
+        lockedStart: '2099-07-02',
+        lockedEnd: '2099-07-05',
+        itineraryDayCount: 4,
+        members,
+        availableByDay,
+        hasAnswers: true,
+      })
+
+      expect(screen.queryByText('Suggested dates')).toBeNull()
+    })
+  })
 })

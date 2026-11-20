@@ -5,16 +5,9 @@
 
 import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { PinVoteCard } from '@/components/map/PinVoteCard'
 import { Pin } from '@/types/map'
-import * as pinsActions from '@/app/trips/actions/pins'
-
-vi.mock('@/app/trips/actions/pins', () => ({
-  toggleCommitPinAction: vi.fn(),
-  deletePinAction: vi.fn(),
-  removePinAction: vi.fn(),
-}))
 
 describe('PinVoteCard Component', () => {
   const samplePin: Pin = {
@@ -29,6 +22,7 @@ describe('PinVoteCard Component', () => {
     proposedBy: 'organizer@planit.app',
     createdAt: '2026-11-01T00:00:00Z',
     votes: [],
+    isConfirmed: false,
   }
 
   afterEach(() => {
@@ -37,7 +31,6 @@ describe('PinVoteCard Component', () => {
 
   it('renders pin title, category, date, and initial zero vote count', () => {
     render(<PinVoteCard pin={samplePin} currentUserEmail="traveler@planit.app" />)
-
     expect(screen.getByTestId('pin-name').textContent).toBe('Cervejaria Ramiro')
     expect(screen.getByText('Food & Drink')).toBeDefined()
     expect(screen.getByTestId('pin-date-badge').textContent).toContain('2026-11-20')
@@ -126,178 +119,150 @@ describe('PinVoteCard Component', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('hides the commit button for non-organizers', () => {
-    render(<PinVoteCard pin={samplePin} isOrganizer={false} />)
-    expect(screen.queryByTestId('toggle-commit-pin-button')).toBeNull()
+  it('closes voting and renders confirmation badge when pin is confirmed', () => {
+    const confirmedPin: Pin = {
+      ...samplePin,
+      isConfirmed: true,
+    }
+
+    render(
+      <PinVoteCard
+        pin={confirmedPin}
+        currentUserEmail="traveler@planit.app"
+      />
+    )
+
+    expect(screen.getByTestId('pin-confirmed-badge')).toBeDefined()
+    expect(screen.getByTestId('voting-closed-badge').textContent).toBe('Voting closed')
+    expect(screen.queryByTestId('vote-pin-button')).toBeNull()
   })
 
-  it('allows organizer to commit and uncommit pin to itinerary', () => {
-    const onVoteChange = vi.fn()
+  it('allows organizer to confirm a proposed pin', () => {
+    const onConfirmToggle = vi.fn()
     render(
       <PinVoteCard
         pin={samplePin}
         isOrganizer={true}
-        onVoteChange={onVoteChange}
+        onConfirmToggle={onConfirmToggle}
       />
     )
 
-    const commitBtn = screen.getByTestId('toggle-commit-pin-button')
-    expect(commitBtn.textContent).toBe('Commit')
-    expect(screen.queryByTestId('pin-committed-badge')).toBeNull()
+    const confirmBtn = screen.getByTestId('confirm-pin-button')
+    expect(confirmBtn).toBeDefined()
+    fireEvent.click(confirmBtn)
 
-    // Click commit
-    fireEvent.click(commitBtn)
-
-    expect(commitBtn.textContent).toBe('Uncommit')
-    expect(screen.getByTestId('pin-committed-badge')).toBeDefined()
-    expect(onVoteChange).toHaveBeenCalledWith(
+    expect(onConfirmToggle).toHaveBeenCalledWith(
       expect.objectContaining({
-        commited: true,
-      })
-    )
-
-    // Click uncommit
-    fireEvent.click(commitBtn)
-
-    expect(commitBtn.textContent).toBe('Commit')
-    expect(screen.queryByTestId('pin-committed-badge')).toBeNull()
-    expect(onVoteChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        commited: false,
+        id: samplePin.id,
+        isConfirmed: true,
       })
     )
   })
 
-  describe('Organizer remove pin button', () => {
-    it('hides the remove pin button for non-organizers', () => {
-      render(<PinVoteCard pin={samplePin} isOrganizer={false} />)
-      expect(screen.queryByTestId('remove-pin-button')).toBeNull()
-      expect(screen.queryByTestId('delete-pin-button')).toBeNull()
-      expect(screen.queryByRole('button', { name: /Remove pin/i })).toBeNull()
-    })
+  it('allows organizer to revert a confirmed pin back to proposed', () => {
+    const confirmedPin: Pin = {
+      ...samplePin,
+      isConfirmed: true,
+    }
+    const onConfirmToggle = vi.fn()
+    render(
+      <PinVoteCard
+        pin={confirmedPin}
+        isOrganizer={true}
+        onConfirmToggle={onConfirmToggle}
+      />
+    )
 
-    it('renders the remove pin button for organizers', () => {
-      render(<PinVoteCard pin={samplePin} isOrganizer={true} />)
-      expect(screen.getByTestId('remove-pin-button')).toBeDefined()
-      expect(screen.getByTestId('delete-pin-button')).toBeDefined()
-      expect(screen.getByRole('button', { name: /Remove pin/i })).toBeDefined()
-      expect(screen.getByText('Remove pin')).toBeDefined()
-    })
+    const revertBtn = screen.getByTestId('revert-pin-button')
+    expect(revertBtn).toBeDefined()
+    fireEvent.click(revertBtn)
 
-    it('allows organizer to delete a pin and invokes onDeletePin and onClose', async () => {
-      const onDeletePin = vi.fn()
-      const onClose = vi.fn()
-
-      render(
-        <PinVoteCard
-          pin={samplePin}
-          isOrganizer={true}
-          onDeletePin={onDeletePin}
-          onClose={onClose}
-        />
-      )
-
-      const removeBtn = screen.getByRole('button', { name: /Remove pin/i })
-      fireEvent.click(removeBtn)
-
-      expect(onDeletePin).toHaveBeenCalledWith(samplePin.id)
-      expect(onClose).toHaveBeenCalled()
-    })
-
-    it('calls deletePinAction when deleting a pin scoped to a trip', async () => {
-      vi.mocked(pinsActions.deletePinAction).mockResolvedValueOnce({ success: true })
-      const onDeletePin = vi.fn()
-      const onClose = vi.fn()
-
-      render(
-        <PinVoteCard
-          pin={{ ...samplePin, tripId: 'trip-100' }}
-          tripId="trip-100"
-          isOrganizer={true}
-          onDeletePin={onDeletePin}
-          onClose={onClose}
-        />
-      )
-
-      const removeBtn = screen.getByTestId('remove-pin-button')
-      fireEvent.click(removeBtn)
-
-      await waitFor(() => {
-        expect(pinsActions.deletePinAction).toHaveBeenCalledWith('trip-100', samplePin.id)
-        expect(onDeletePin).toHaveBeenCalledWith(samplePin.id)
-        expect(onClose).toHaveBeenCalled()
+    expect(onConfirmToggle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: samplePin.id,
+        isConfirmed: false,
       })
-    })
+    )
+  })
 
-    it('handles error when deletePinAction returns an error', async () => {
-      vi.mocked(pinsActions.deletePinAction).mockResolvedValueOnce({ error: 'DB failure' })
-      const onDeletePin = vi.fn()
-      const onClose = vi.fn()
+  it('does not render confirm or revert buttons for regular members', () => {
+    render(
+      <PinVoteCard
+        pin={samplePin}
+        isOrganizer={false}
+      />
+    )
 
-      render(
-        <PinVoteCard
-          pin={{ ...samplePin, tripId: 'trip-100' }}
-          tripId="trip-100"
-          isOrganizer={true}
-          onDeletePin={onDeletePin}
-          onClose={onClose}
-        />
-      )
+    expect(screen.queryByTestId('confirm-pin-button')).toBeNull()
+    expect(screen.queryByTestId('revert-pin-button')).toBeNull()
+  })
 
-      const removeBtn = screen.getByTestId('remove-pin-button')
-      fireEvent.click(removeBtn)
+  it('renders edit and delete buttons for the pin author on a proposed pin', () => {
+    const onEdit = vi.fn()
+    const onDelete = vi.fn()
+    render(
+      <PinVoteCard
+        pin={samplePin}
+        currentUserEmail="organizer@planit.app"
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    )
 
-      await waitFor(() => {
-        expect(pinsActions.deletePinAction).toHaveBeenCalledWith('trip-100', samplePin.id)
-      })
-      expect(onDeletePin).not.toHaveBeenCalled()
-      expect(onClose).not.toHaveBeenCalled()
-    })
+    const editBtn = screen.getByTestId('edit-pin-button')
+    const deleteBtn = screen.getByTestId('delete-pin-button')
 
-    it('handles exception when deletePinAction throws', async () => {
-      vi.mocked(pinsActions.deletePinAction).mockRejectedValueOnce(new Error('Network crash'))
-      const onDeletePin = vi.fn()
-      const onClose = vi.fn()
+    expect(editBtn).toBeDefined()
+    expect(deleteBtn).toBeDefined()
 
-      render(
-        <PinVoteCard
-          pin={{ ...samplePin, tripId: 'trip-100' }}
-          tripId="trip-100"
-          isOrganizer={true}
-          onDeletePin={onDeletePin}
-          onClose={onClose}
-        />
-      )
+    fireEvent.click(editBtn)
+    expect(onEdit).toHaveBeenCalledWith(samplePin)
 
-      const removeBtn = screen.getByTestId('remove-pin-button')
-      fireEvent.click(removeBtn)
+    fireEvent.click(deleteBtn)
+    expect(onDelete).toHaveBeenCalledWith(samplePin.id)
+  })
 
-      await waitFor(() => {
-        expect(pinsActions.deletePinAction).toHaveBeenCalledWith('trip-100', samplePin.id)
-      })
-      expect(onDeletePin).not.toHaveBeenCalled()
-      expect(onClose).not.toHaveBeenCalled()
-    })
+  it('hides edit and delete buttons for non-author member on proposed pin', () => {
+    render(
+      <PinVoteCard
+        pin={samplePin}
+        currentUserEmail="stranger@planit.app"
+        isOrganizer={false}
+      />
+    )
 
-    it('removes pin when tripId is default', async () => {
-      const onDeletePin = vi.fn()
-      const onClose = vi.fn()
+    expect(screen.queryByTestId('edit-pin-button')).toBeNull()
+    expect(screen.queryByTestId('delete-pin-button')).toBeNull()
+  })
 
-      render(
-        <PinVoteCard
-          pin={samplePin}
-          tripId="default"
-          isOrganizer={true}
-          onDeletePin={onDeletePin}
-          onClose={onClose}
-        />
-      )
+  it('hides edit and delete buttons from author when pin is confirmed, unless organizer', () => {
+    const confirmedPin: Pin = {
+      ...samplePin,
+      proposedBy: 'author@planit.app',
+      isConfirmed: true,
+    }
 
-      const removeBtn = screen.getByTestId('remove-pin-button')
-      fireEvent.click(removeBtn)
+    const { rerender } = render(
+      <PinVoteCard
+        pin={confirmedPin}
+        currentUserEmail="author@planit.app"
+        isOrganizer={false}
+      />
+    )
 
-      expect(onDeletePin).toHaveBeenCalledWith(samplePin.id)
-      expect(onClose).toHaveBeenCalled()
-    })
+    expect(screen.queryByTestId('edit-pin-button')).toBeNull()
+    expect(screen.queryByTestId('delete-pin-button')).toBeNull()
+
+    // Organizer can edit and delete confirmed pin
+    rerender(
+      <PinVoteCard
+        pin={confirmedPin}
+        currentUserEmail="author@planit.app"
+        isOrganizer={true}
+      />
+    )
+
+    expect(screen.getByTestId('edit-pin-button')).toBeDefined()
+    expect(screen.getByTestId('delete-pin-button')).toBeDefined()
   })
 })

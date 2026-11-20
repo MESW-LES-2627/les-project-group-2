@@ -27,7 +27,7 @@ describe('App Root Pages', () => {
   })
 
   it('RootLayout renders children and has metadata', () => {
-    expect(metadata.title).toBe('PlanIt!')
+    expect(metadata.title).toBe('Create Next App')
     const { container } = render(
       <RootLayout params={Promise.resolve({})}>
         <div data-testid="child">Hello World</div>

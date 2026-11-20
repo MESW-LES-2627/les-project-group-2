@@ -12,7 +12,6 @@ import {
   PORTUGAL_DEFAULT_CENTER,
   PORTUGAL_DEFAULT_ZOOM,
   getCartoTileUrl,
-  isPinCommitted,
   PinCategory,
 } from '@/types/map'
 
@@ -64,22 +63,18 @@ describe('Map Type and Category Helpers', () => {
     expect(CARTO_BASEMAPS.darkMatter.url).toContain('cartocdn.com')
   })
 
-  it('constructs Carto tile URL with and without API key', () => {
-    const rawUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-    expect(getCartoTileUrl(rawUrl)).toBe(rawUrl)
-    expect(getCartoTileUrl(rawUrl, 'secret-key')).toBe(`${rawUrl}?key=secret-key`)
-    expect(getCartoTileUrl(rawUrl, '')).toBe(rawUrl)
-  })
+  it('constructs Carto tile URL with API key', () => {
+    const base = 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'
+    const key = 'test-api-key-123'
+    expect(getCartoTileUrl(base, key)).toBe(
+      'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=test-api-key-123'
+    )
 
-  it('correctly determines if a pin is committed', () => {
-    const uncommittedPin = { id: 'p1', commited: false } as unknown as Parameters<typeof isPinCommitted>[0]
-    const committedPin1 = { id: 'p2', commited: true } as unknown as Parameters<typeof isPinCommitted>[0]
-    const committedPin2 = { id: 'p3', committed: true } as unknown as Parameters<typeof isPinCommitted>[0]
-    const emptyPin = { id: 'p4' } as unknown as Parameters<typeof isPinCommitted>[0]
+    const withQuery = 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?v=1'
+    expect(getCartoTileUrl(withQuery, key)).toBe(
+      'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?v=1&key=test-api-key-123'
+    )
 
-    expect(isPinCommitted(uncommittedPin)).toBe(false)
-    expect(isPinCommitted(committedPin1)).toBe(true)
-    expect(isPinCommitted(committedPin2)).toBe(true)
-    expect(isPinCommitted(emptyPin)).toBe(false)
+    expect(getCartoTileUrl(base, '')).toBe(base)
   })
 })
