@@ -2,11 +2,7 @@
 
 > **Group 2 — PlanIt!**
 >
-> **Increment / Milestone:** Iteration 2 — Official Trip Dates, Best-Date Suggestions, Committing Winning Pins, Member Roles, and Browser-Level Acceptance Tests.
->
-> This claim is split into focused documents so that each part can be read on its own.
-> The main structure of the Iteration 0 and Iteration 1 claims is unchanged; the
-> [claim structure](#claim-structure) table shows where every section now lives.
+> **Increment / Milestone:** Iteration 2
 
 ---
 
@@ -33,7 +29,7 @@
 
 | # | Document | Main structure section(s) it contains |
 | :--- | :--- | :--- |
-| — | [This page](claim.md) | Header, permalinks and reading guide |
+| — | [This page](claim.md) | Header, permalinks, reading guide and board |
 | 01 | [Delivery, environments and product](01-delivery.md) | Delivery · Environments · Product |
 | 02 | [What runs on this tag](02-what-runs.md) | What Runs on This Tag |
 | 03 | [Stories in this increment](03-stories.md) | Stories in This Increment |
@@ -56,3 +52,17 @@
 | **Line coverage** | 90.49% (Vitest) |
 | **Lint** | 0 errors, 0 warnings |
 | **Staging pipeline** | [Checks](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44736383635) and [deploy](https://github.com/MESW-LES-2627/les-project-group-2/actions/runs/44736383459) green for `2638f842` |
+
+---
+
+## Board
+
+**Start of Iteration 2** — the six delivered stories are still outside Done; US-3.4 and US-3.6 are in Ready.
+
+![Board at the start of Iteration 2](initial_board.jpg)
+
+**End of Iteration 2** — the six stories are Done; US-3.4 and US-3.6 remain Ready and carry into Iteration 3.
+
+![Final board at the end of Iteration 2](final_board.png)
+
+The live board is the [GitHub Project board of the organisation](https://github.com/orgs/MESW-LES-2627/projects).

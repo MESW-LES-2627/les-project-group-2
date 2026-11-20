@@ -31,9 +31,7 @@ story.
 ## Ready but Not Delivered
 
 These stories are in the **Ready** column and were assigned, but no
-implementation or pull request was delivered in Iteration 2. They need an owner
-and a delivery slot in Iteration 3; the board status alone did not make them part
-of this increment.
+implementation or pull request was delivered in Iteration 2.
 
 | Story | Issue | Board status | Notes |
 | :--- | :--- | :--- | :--- |
