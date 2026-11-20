@@ -19,8 +19,11 @@ test.describe('US-1.1: User Registration and Authentication', () => {
     await page.getByPlaceholder('Confirm password').fill('SecurePass123!')
 
     await page.getByRole('button', { name: 'Sign Up' }).click()
-
-    await expect(page).toHaveURL(/.*dashboard/, { timeout : 15000})
+await page.waitForLoadState('networkidle')
+const cookies = await context.cookies()
+console.log(cookies.filter(c => c.name === 'planit-test-session'))
+console.log(page.url())
+    await expect(page).toHaveURL(/.*dashboard/)
   })
 
   test('Given an email that is already registered, when I try to sign up with it, then I see an error and no account is created', async ({
