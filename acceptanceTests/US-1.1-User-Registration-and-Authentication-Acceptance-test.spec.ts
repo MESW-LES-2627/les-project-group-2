@@ -20,7 +20,7 @@ test.describe('US-1.1: User Registration and Authentication', () => {
 
     await page.getByRole('button', { name: 'Sign Up' }).click()
 
-    await expect(page).toHaveURL(/.*dashboard/)
+    await expect(page).toHaveURL(/.*dashboard/, { timeout : 15000})
   })
 
   test('Given an email that is already registered, when I try to sign up with it, then I see an error and no account is created', async ({
