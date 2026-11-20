@@ -39,7 +39,9 @@ Organizers can now turn a group decision into official trip dates.
   itinerary days, restores the `Planning` state, and allows members to edit
   availability again.
 - **Carry-over completion:** this story also completes the lock-aware guard of
-  US-2.1 and the read-only part of US-2.5.
+  US-2.1 and the read-only part of US-2.5. With the editable availability path
+  from US-2.2, US-2.5 is fully covered: members can change answers while the
+  dates are unlocked and see them read-only once locked.
 
 **Database:** [`20261109100000_lock_trip_dates.sql`](https://github.com/MESW-LES-2627/les-project-group-2/blob/staging/supabase/migrations/20261109100000_lock_trip_dates.sql)
 

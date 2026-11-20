@@ -57,6 +57,10 @@
   19 November and needed a staging merge plus a second check run on 20 November
   before it was mergeable, and its docs page had to be removed to keep the PR
   focused. Shorter-lived branches and a rebase/merge cadence would avoid this.
+- **Two Ready stories were not pulled in.** US-3.4 (Categorize Pins) and US-3.6
+  (Comment on a Pin) stayed in the Ready column while the close-out work was
+  completed. They are the first candidates for Iteration 3 and are listed in the
+  claim so the carry-over is explicit.
 - **Coverage margin is thin.** Line coverage dropped from 93.96% to 90.49% as
   the map and role-management surfaces grew. `TripMapContainer` and
   `LeafletMap` remain the weakest files, especially marker interactions and
@@ -80,3 +84,5 @@
    for map marker interactions and persistence-error paths next iteration.
 5. Freeze story merges at least two days before the iteration tag so the
    increment can be reviewed and deployed as a whole.
+6. Start Iteration 3 with the two Ready stories carried over from this claim
+   (US-3.4 Categorize Pins and US-3.6 Comment on a Pin).
