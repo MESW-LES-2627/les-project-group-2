@@ -79,7 +79,7 @@ describe('TripMapContainer Unit Tests', () => {
       id: 'pin-belem',
       tripId: 'trip-lisbon',
       name: 'Torre de Belém',
-      category: 'sightseeing',
+      category: 'visit',
       lat: 38.6916,
       lng: -9.216,
       proposedBy: 'organizer@planit.app',
@@ -100,7 +100,7 @@ describe('TripMapContainer Unit Tests', () => {
       id: 'pin-porto',
       tripId: 'trip-lisbon',
       name: 'Livraria Lello',
-      category: 'sightseeing',
+      category: 'visit',
       lat: 41.1469,
       lng: -8.6148,
       proposedBy: 'friend2@planit.app',
@@ -132,6 +132,8 @@ describe('TripMapContainer Unit Tests', () => {
 
     const selectBtn = screen.getByTestId('trigger-select-place')
     fireEvent.click(selectBtn)
+    fireEvent.click(screen.getByRole('radio', { name: 'Visit' }))
+    fireEvent.click(screen.getByTestId('create-pin-button'))
 
     await waitFor(() => {
       expect(capturedMapProps?.pins).toHaveLength(1)
@@ -152,6 +154,8 @@ describe('TripMapContainer Unit Tests', () => {
     })
 
     fireEvent.click(screen.getByTestId('trigger-map-click'))
+    fireEvent.click(screen.getByRole('radio', { name: 'Visit' }))
+    fireEvent.click(screen.getByTestId('create-pin-button'))
 
     await waitFor(() => {
       expect(capturedMapProps?.pins).toHaveLength(1)

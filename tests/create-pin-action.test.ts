@@ -31,7 +31,7 @@ describe('createPinAction', () => {
     name: '  Torre de Belém  ',
     description: 'Iconic tower',
     date: '2026-11-15',
-    category: 'sightseeing' as const,
+    category: 'visit' as const,
     lat: 38.6916,
     lng: -9.216,
   }
@@ -85,6 +85,25 @@ describe('createPinAction', () => {
     ).resolves.toEqual({ error: 'Pin coordinates are invalid.' })
   })
 
+  it('rejects a pin without a valid category', async () => {
+    const expected = { error: 'Choose a category for the pin.' }
+
+    await expect(
+      createPinAction('trip-1', { ...input, category: 'sightseeing' as never })
+    ).resolves.toEqual(expected)
+    await expect(
+      createPinAction('trip-1', { ...input, category: undefined as never })
+    ).resolves.toEqual(expected)
+    expect(insertQuery.insert).not.toHaveBeenCalled()
+  })
+
+  it('stores every supported category', async () => {
+    for (const category of ['stay', 'visit', 'activity', 'food', 'meeting_point'] as const) {
+      await createPinAction('trip-1', { ...input, category })
+      expect(insertQuery.insert).toHaveBeenLastCalledWith(expect.objectContaining({ category }))
+    }
+  })
+
   it('rejects unauthenticated callers', async () => {
     mockGetUser.mockResolvedValue({ data: { user: null }, error: null })
     await expect(createPinAction('trip-1', input)).resolves.toEqual({
@@ -100,7 +119,7 @@ describe('createPinAction', () => {
       name: 'Torre de Belém',
       description: 'Iconic tower',
       date: '2026-11-15',
-      category: 'sightseeing',
+      category: 'visit',
       lat: 38.6916,
       lng: -9.216,
       proposed_by: 'organizer@planit.app',

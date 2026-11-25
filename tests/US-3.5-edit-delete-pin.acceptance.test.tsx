@@ -5,7 +5,7 @@
 
 import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react'
 import { TripMapContainer } from '@/components/map/TripMapContainer'
 import { Pin } from '@/types/map'
 import { canEditPin, canDeletePin } from '@/services/pin-management'
@@ -52,7 +52,7 @@ describe('US-3.5 Acceptance Tests: Edit/Delete Own Pin Proposal', () => {
       tripId: 'trip-lisbon',
       name: 'Torre de Belém',
       description: 'Historical monument',
-      category: 'sightseeing',
+      category: 'visit',
       lat: 38.6916,
       lng: -9.216,
       proposedBy: 'member@planit.app',
@@ -75,7 +75,7 @@ describe('US-3.5 Acceptance Tests: Edit/Delete Own Pin Proposal', () => {
       tripId: 'trip-lisbon',
       name: 'Confirmed Monastery',
       description: 'Official spot',
-      category: 'sightseeing',
+      category: 'visit',
       lat: 38.6979,
       lng: -9.2067,
       proposedBy: 'member@planit.app',
@@ -139,7 +139,7 @@ describe('US-3.5 Acceptance Tests: Edit/Delete Own Pin Proposal', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('edit-pin-modal')).toBeNull()
       expect(screen.getByTestId('pin-name').textContent).toBe('Torre de Belém (Renamed)')
-      expect(screen.getByText('Activity')).toBeDefined()
+      expect(within(screen.getByTestId('pin-vote-card')).getByText('Activity')).toBeDefined()
       expect(screen.getByText('Updated description for all members')).toBeDefined()
       expect(marker.textContent).toBe('Torre de Belém (Renamed)')
     })

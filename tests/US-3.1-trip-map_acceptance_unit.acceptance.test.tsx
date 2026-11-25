@@ -98,6 +98,8 @@ describe('US-3.1 Acceptance Tests: Interactive Map and Pin Dropping', () => {
 
       const selectBtn = screen.getByTestId('trigger-select-place')
       fireEvent.click(selectBtn)
+      fireEvent.click(screen.getByRole('radio', { name: 'Visit' }))
+      fireEvent.click(screen.getByTestId('create-pin-button'))
 
       await waitFor(() => {
         expect(capturedMapProps?.pins).toHaveLength(1)
@@ -121,6 +123,8 @@ describe('US-3.1 Acceptance Tests: Interactive Map and Pin Dropping', () => {
       })
 
       fireEvent.click(screen.getByTestId('trigger-map-click'))
+      fireEvent.click(screen.getByRole('radio', { name: 'Visit' }))
+      fireEvent.click(screen.getByTestId('create-pin-button'))
 
       await waitFor(() => {
         expect(capturedMapProps?.pins).toHaveLength(1)

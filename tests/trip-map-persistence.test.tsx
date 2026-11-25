@@ -73,7 +73,7 @@ describe('TripMapContainer persistence', () => {
     id: 'pin-1',
     tripId: 'trip-1',
     name: 'Torre de Belém',
-    category: 'sightseeing',
+    category: 'visit',
     lat: 38.6916,
     lng: -9.216,
     proposedBy: 'organizer@planit.app',
@@ -203,7 +203,7 @@ describe('TripMapContainer persistence', () => {
     expect(updatePinAction).toHaveBeenCalledWith('trip-1', 'pin-1', {
       name: 'Belém Tower',
       description: '',
-      category: 'sightseeing',
+      category: 'visit',
       lat: 38.6916,
       lng: -9.216,
       date: '2026-11-15',
@@ -256,10 +256,13 @@ describe('TripMapContainer persistence', () => {
       expect(screen.getByTestId('mock-leaflet-map')).toBeDefined()
     })
     fireEvent.click(screen.getByTestId('trigger-map-click'))
+    fireEvent.click(screen.getByRole('radio', { name: 'Visit' }))
+    fireEvent.click(screen.getByTestId('create-pin-button'))
 
+    await waitFor(() => expect(createPinAction).toHaveBeenCalled())
     expect(createPinAction).toHaveBeenCalledWith('trip-1', {
       name: 'Point (38.710, -9.130)',
-      category: 'sightseeing',
+      category: 'visit',
       lat: 38.71,
       lng: -9.13,
     })
