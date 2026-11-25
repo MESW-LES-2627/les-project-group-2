@@ -64,10 +64,19 @@ export interface PlanitTestSession {
     trip_date?: string | null
     created_at?: string | null
   }>
+  pinComments?: Array<{
+    id: string
+    pin_id: string
+    user_id: string
+    author_name: string
+    body: string
+    created_at?: string | null
+  }>
 }
 
 type SessionPin = NonNullable<PlanitTestSession['pins']>[number]
 type SessionPinVote = NonNullable<PlanitTestSession['pinVotes']>[number]
+type SessionPinComment = NonNullable<PlanitTestSession['pinComments']>[number]
 
 type CookieSetter = {
   set: (name: string, value: string, options?: { path?: string }) => void
@@ -215,6 +224,16 @@ function insertPin(data: Record<string, unknown>, session: PlanitTestSession) {
   return pin
 }
 
+function insertPinComment(data: Record<string, unknown>, session: PlanitTestSession) {
+  const comment = {
+    id: `comment-${(session.pinComments?.length ?? 0) + 1}-${Date.now()}`,
+    created_at: new Date().toISOString(),
+    ...data,
+  } as SessionPinComment
+  session.pinComments = [...(session.pinComments ?? []), comment]
+  return comment
+}
+
 function insertPinVote(data: Record<string, unknown>, session: PlanitTestSession) {
   const vote = {
     id: `vote-${(session.pinVotes?.length ?? 0) + 1}-${Date.now()}`,
@@ -231,6 +250,7 @@ const insertHandlers: Record<string, InsertHandler> = {
   trip_members: insertMember,
   pins: insertPin,
   pin_votes: insertPinVote,
+  pin_comments: insertPinComment,
 }
 
 function handleInsert(table: string, data: unknown, session: PlanitTestSession): unknown {
@@ -257,8 +277,18 @@ function findPinVotes(session: PlanitTestSession, filters: Record<string, unknow
   )
 }
 
+function findPinComments(session: PlanitTestSession, filters: Record<string, unknown>) {
+  return (session.pinComments ?? []).filter((comment) =>
+    matchesFilters(comment as unknown as Record<string, unknown>, filters)
+  )
+}
+
 function withPinVotes(session: PlanitTestSession, pin: SessionPin) {
-  return { ...pin, pin_votes: findPinVotes(session, { pin_id: pin.id }) }
+  return {
+    ...pin,
+    pin_votes: findPinVotes(session, { pin_id: pin.id }),
+    pin_comments: findPinComments(session, { pin_id: pin.id }),
+  }
 }
 
 function applyPinUpdate(
@@ -318,6 +348,16 @@ function deletePin(filters: Record<string, unknown>, session: PlanitTestSession)
   session.pinVotes = (session.pinVotes ?? []).filter(
     (vote) => !removedIds.has(vote.pin_id)
   )
+  session.pinComments = (session.pinComments ?? []).filter(
+    (comment) => !removedIds.has(comment.pin_id)
+  )
+}
+
+function deletePinComment(filters: Record<string, unknown>, session: PlanitTestSession) {
+  const removedIds = new Set(findPinComments(session, filters).map((comment) => comment.id))
+  session.pinComments = (session.pinComments ?? []).filter(
+    (comment) => !removedIds.has(comment.id)
+  )
 }
 
 function deleteVote(filters: Record<string, unknown>, session: PlanitTestSession) {
@@ -334,6 +374,7 @@ const deleteHandlers: Record<string, DeleteHandler> = {
   trip_date_windows: deleteWindow,
   pins: deletePin,
   pin_votes: deleteVote,
+  pin_comments: deletePinComment,
 }
 
 function handleDeleteAction(
@@ -382,6 +423,7 @@ function getTableData(table: string, session: PlanitTestSession, userId?: string
     trip_availability: session.availabilities,
     pins: (session.pins ?? []).map((pin) => withPinVotes(session, pin)),
     pin_votes: session.pinVotes,
+    pin_comments: session.pinComments,
   }
   return map[table] ?? []
 }
@@ -555,6 +597,10 @@ export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?
               const found = inserted ?? findPins(session, filters)[0] ?? null
               return { data: found ? withPinVotes(session, found) : null, error: null }
             },
+            pin_comments: () => ({
+              data: (query._inserted as SessionPinComment | undefined) ?? findPinComments(session, filters)[0] ?? null,
+              error: null,
+            }),
           }
           const handler = handlers[table]
           return handler ? handler() : { data: null, error: null }
@@ -572,6 +618,10 @@ export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?
             },
             pin_votes: () => ({
               data: findPinVotes(session, filters)[0] ?? null,
+              error: null,
+            }),
+            pin_comments: () => ({
+              data: findPinComments(session, filters)[0] ?? null,
               error: null,
             }),
           }
@@ -616,6 +666,8 @@ export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?
             data = findPins(session, filters).map((pin) => withPinVotes(session, pin))
           } else if (table === 'pin_votes') {
             data = findPinVotes(session, filters)
+          } else if (table === 'pin_comments') {
+            data = findPinComments(session, filters)
           }
           const result = { data, error: null }
           return Promise.resolve(onfulfilled ? onfulfilled(result) : result)

@@ -17,11 +17,13 @@ import { EditPinModal } from './EditPinModal'
 import { NewPinModal, type NewPinDraft } from './NewPinModal'
 import { CategoryLegend } from './CategoryLegend'
 import type { UserMemberTrip } from '@/app/trips/actions/get-member-trips'
-import { Pin, PinCategory, PlaceSearchResult } from '@/types/map'
+import { Pin, PinCategory, PinComment, PlaceSearchResult } from '@/types/map'
+import { withComment, withoutComment } from '@/utils/pin-comments'
 import { PinVoteCard } from './PinVoteCard'
 import { ProfileCard } from '@/components/profile'
 import { confirmPinAction, revertPinAction } from '@/app/trips/actions/pin-confirmation'
 import { createPinAction } from '@/app/trips/actions/create-pin'
+import { addPinCommentAction, deletePinCommentAction } from '@/app/trips/actions/pin-comments'
 import { togglePinVoteAction } from '@/app/trips/actions/vote-pin'
 import { updatePinAction, deletePinAction } from '@/app/trips/actions/manage-pins'
 
@@ -472,6 +474,58 @@ export function TripMapContainer({
   )
 
   /**
+   * @brief Adds a comment to a pin, persisting it for real trips, and shows it under the pin.
+   * @param pinId The pin being commented on.
+   * @param body The comment text.
+   */
+  const handleAddComment = useCallback(
+    async (pinId: string, body: string): Promise<{ error?: string }> => {
+      let comment: PinComment
+
+      if (shouldPersist) {
+        const result = await addPinCommentAction(tripId!, pinId, body)
+        if (result.error || !result.comment) {
+          return { error: result.error ?? 'Failed to add the comment.' }
+        }
+        comment = result.comment
+      } else {
+        comment = {
+          id: `comment-${Date.now()}`,
+          pinId,
+          userId: currentUserId || currentUserEmail || 'you',
+          authorName: displayName || 'You',
+          body,
+          createdAt: new Date().toISOString(),
+        }
+      }
+
+      setPins((prev) => prev.map((p) => (p.id === pinId ? withComment(p, comment) : p)))
+      setSelectedPin((prev) => (prev?.id === pinId ? withComment(prev, comment) : prev))
+      return {}
+    },
+    [currentUserEmail, currentUserId, displayName, shouldPersist, tripId]
+  )
+
+  /**
+   * @brief Deletes one of the member's own comments, persisting the deletion for real trips.
+   * @param pinId The pin the comment belongs to.
+   * @param commentId The comment to delete.
+   */
+  const handleDeleteComment = useCallback(
+    async (pinId: string, commentId: string): Promise<{ error?: string }> => {
+      if (shouldPersist) {
+        const result = await deletePinCommentAction(tripId!, commentId)
+        if (result.error) return { error: result.error }
+      }
+
+      setPins((prev) => prev.map((p) => (p.id === pinId ? withoutComment(p, commentId) : p)))
+      setSelectedPin((prev) => (prev?.id === pinId ? withoutComment(prev, commentId) : prev))
+      return {}
+    },
+    [shouldPersist, tripId]
+  )
+
+  /**
    * @brief Handles deleting a pin (removes pin and its votes) and persists the deletion.
    */
   const handleDeletePin = useCallback(
@@ -577,6 +631,8 @@ export function TripMapContainer({
           onConfirmToggle={handleConfirmToggle}
           onEdit={(pin) => setEditingPin(pin)}
           onDelete={handleDeletePin}
+          onAddComment={handleAddComment}
+          onDeleteComment={handleDeleteComment}
           onClose={() => setSelectedPin(null)}
         />
       )}
