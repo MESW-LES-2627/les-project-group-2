@@ -12,6 +12,7 @@ import {DateWindows} from './date-windows'
 import {AvailabilityCalendar} from './availability-calendar'
 import {LockDates} from './lock-dates'
 import {Expenses} from './expenses'
+import {Balances} from './balances'
 import {PromoteToOrganizerButton} from './promote-member-button'
 import type {DateWindow} from '@/utils/date-windows'
 import {buildAvailabilityCalendar, type AvailabilityRow} from '@/utils/availability'
@@ -654,6 +655,12 @@ function TripWorkspaceBody({
                 expenses={expenses}
                 currentUserId={currentUserId}
                 isOrganizer={isOrganizer}
+            />
+
+            <Balances
+                members={tripMembers.map(({ user_id, display_name }) => ({ user_id, display_name }))}
+                expenses={expenses}
+                currentUserId={currentUserId}
             />
 
             <TripSectionsList tripId={tripId} />
