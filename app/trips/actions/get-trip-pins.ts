@@ -28,6 +28,14 @@ const PIN_SELECT = `
     user_email,
     trip_date,
     created_at
+  ),
+  pin_comments (
+    id,
+    pin_id,
+    user_id,
+    author_name,
+    body,
+    created_at
   )
 `
 
