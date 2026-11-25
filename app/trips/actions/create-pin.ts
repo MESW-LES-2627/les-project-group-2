@@ -7,7 +7,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { isValidCoordinate, type Pin, type PinCategory } from '@/types/map'
+import { isPinCategory, isValidCoordinate, type Pin, type PinCategory } from '@/types/map'
 import { mapPinRow, type PinRow } from '@/services/pin-mappers'
 
 export interface CreatePinInput {
@@ -31,6 +31,9 @@ function validatePinInput(tripId: string, input: CreatePinInput): string | null 
   }
   if (!isValidCoordinate(input.lat, input.lng)) {
     return 'Pin coordinates are invalid.'
+  }
+  if (!isPinCategory(input.category)) {
+    return 'Choose a category for the pin.'
   }
   return null
 }

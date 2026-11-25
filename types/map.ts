@@ -3,7 +3,37 @@
  * @brief Type definitions and utility helpers for the interactive map and pin dropping features.
  */
 
-export type PinCategory = 'sightseeing' | 'food' | 'lodging' | 'activity' | 'other'
+export type PinCategory = 'stay' | 'visit' | 'activity' | 'food' | 'meeting_point'
+
+/**
+ * @brief Display metadata of a pin category: label, marker colour and marker icon.
+ */
+export interface PinCategoryInfo {
+  value: PinCategory
+  label: string
+  color: string
+  icon: string
+}
+
+/**
+ * @brief Every category a pin can be tagged with, in the order shown in forms and in the legend.
+ */
+export const PIN_CATEGORIES: readonly PinCategoryInfo[] = [
+  { value: 'stay', label: 'Stay', color: '#8b5cf6', icon: '🏨' },
+  { value: 'visit', label: 'Visit', color: '#3b82f6', icon: '🏛️' },
+  { value: 'activity', label: 'Activity', color: '#10b981', icon: '🚴' },
+  { value: 'food', label: 'Food', color: '#f97316', icon: '🍴' },
+  { value: 'meeting_point', label: 'Meeting Point', color: '#e11d48', icon: '📍' },
+]
+
+/**
+ * @brief Checks whether a value is one of the supported pin categories.
+ * @param value Value to check.
+ * @return True when the value is a PinCategory.
+ */
+export function isPinCategory(value: unknown): value is PinCategory {
+  return PIN_CATEGORIES.some((category) => category.value === value)
+}
 
 export interface PinVote {
   id: string
@@ -96,25 +126,19 @@ export function getCartoTileUrl(baseUrl: string, apiKey?: string): string {
   return `${baseUrl}${delimiter}key=${encodeURIComponent(key)}`
 }
 
+const FALLBACK_CATEGORY: PinCategoryInfo = PIN_CATEGORIES[1]
+
+function getCategoryInfo(category: PinCategory): PinCategoryInfo {
+  return PIN_CATEGORIES.find((item) => item.value === category) ?? FALLBACK_CATEGORY
+}
+
 /**
  * @brief Map category to a display color for map markers and badges.
  * @param category The pin category.
- * @return Hex color code or Tailwind color string.
+ * @return Hex color code.
  */
 export function getCategoryColor(category: PinCategory): string {
-  switch (category) {
-    case 'sightseeing':
-      return '#3b82f6' // Blue
-    case 'food':
-      return '#f97316' // Orange
-    case 'lodging':
-      return '#8b5cf6' // Purple
-    case 'activity':
-      return '#10b981' // Emerald
-    case 'other':
-    default:
-      return '#64748b' // Slate
-  }
+  return getCategoryInfo(category).color
 }
 
 /**
@@ -123,19 +147,16 @@ export function getCategoryColor(category: PinCategory): string {
  * @return Human-readable category label.
  */
 export function getCategoryLabel(category: PinCategory): string {
-  switch (category) {
-    case 'sightseeing':
-      return 'Sightseeing'
-    case 'food':
-      return 'Food & Drink'
-    case 'lodging':
-      return 'Lodging'
-    case 'activity':
-      return 'Activity'
-    case 'other':
-    default:
-      return 'Other'
-  }
+  return getCategoryInfo(category).label
+}
+
+/**
+ * @brief Map category to the icon shown on its map markers and in the legend.
+ * @param category The pin category.
+ * @return Emoji used as the category icon.
+ */
+export function getCategoryIcon(category: PinCategory): string {
+  return getCategoryInfo(category).icon
 }
 
 /**
