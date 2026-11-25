@@ -10,6 +10,7 @@ import {
   Pin,
   getCategoryLabel,
   getCategoryColor,
+  getCategoryIcon,
   getPinVoteCount,
   getPinVoters,
   hasUserVoted,
@@ -258,9 +259,13 @@ export function PinVoteCard({
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span
-              className="inline-block h-2.5 w-2.5 rounded-full"
+              aria-hidden="true"
+              data-testid="pin-category-icon"
+              className="flex h-5 w-5 items-center justify-center rounded-full text-[11px]"
               style={{ backgroundColor: categoryColor }}
-            />
+            >
+              {getCategoryIcon(currentPin.category)}
+            </span>
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               {getCategoryLabel(currentPin.category)}
             </span>

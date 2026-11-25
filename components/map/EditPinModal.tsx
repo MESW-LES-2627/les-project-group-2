@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react'
-import { Pin, PinCategory, isValidCoordinate } from '@/types/map'
+import { PIN_CATEGORIES, Pin, PinCategory, isValidCoordinate } from '@/types/map'
 import { X, Edit3, Save } from 'lucide-react'
 
 interface EditPinModalProps {
@@ -125,11 +125,11 @@ export function EditPinModal({
               onChange={(e) => setCategory(e.target.value as PinCategory)}
               className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500 transition"
             >
-              <option value="sightseeing">Sightseeing</option>
-              <option value="food">Food & Drink</option>
-              <option value="lodging">Lodging</option>
-              <option value="activity">Activity</option>
-              <option value="other">Other</option>
+              {PIN_CATEGORIES.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.icon} {item.label}
+                </option>
+              ))}
             </select>
           </div>
 
