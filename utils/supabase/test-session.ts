@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { splitEqually } from '@/utils/expenses'
 
 export interface PlanitTestSession {
   user?: { id: string; email?: string } | null
@@ -55,6 +56,15 @@ export interface PlanitTestSession {
     proposed_by: string
     created_at?: string | null
     is_confirmed?: boolean | null
+  }>
+  expenses?: Array<{
+    id: string
+    trip_id: string
+    description: string
+    amount_cents: number
+    paid_by: string
+    created_at?: string | null
+    trip_expense_participants: Array<{ user_id: string; share_cents: number }>
   }>
   pinVotes?: Array<{
     id: string
@@ -382,6 +392,7 @@ function getTableData(table: string, session: PlanitTestSession, userId?: string
     trip_availability: session.availabilities,
     pins: (session.pins ?? []).map((pin) => withPinVotes(session, pin)),
     pin_votes: session.pinVotes,
+    trip_expenses: session.expenses,
   }
   return map[table] ?? []
 }
@@ -417,6 +428,81 @@ function handleRpcUnlockTripDates(session: PlanitTestSession, syncCookie: () => 
     session.itineraryDays = []
     syncCookie()
   }
+  return { data: null, error: null }
+}
+
+function expenseError(message: string) {
+  return { data: null, error: { code: 'P0001', message } }
+}
+
+function canManageSessionExpense(
+  session: PlanitTestSession,
+  expense: { paid_by: string; trip_id: string },
+  userId: string | undefined
+) {
+  const trip = session.trips?.find((t) => t.id === expense.trip_id)
+  return expense.paid_by === userId || trip?.organizer_id === userId
+}
+
+function buildExpenseValues(args: Record<string, unknown> | undefined) {
+  const participants = splitEqually(
+    args?.p_amount_cents as number,
+    (args?.p_participants as string[] | undefined) ?? []
+  ).map((share) => ({ user_id: share.userId, share_cents: share.shareCents }))
+
+  return {
+    description: args?.p_description as string,
+    amount_cents: args?.p_amount_cents as number,
+    paid_by: args?.p_paid_by as string,
+    trip_expense_participants: participants,
+  }
+}
+
+function handleRpcSaveExpense(
+  session: PlanitTestSession,
+  args: Record<string, unknown> | undefined,
+  userId: string | undefined,
+  syncCookie: () => void
+) {
+  const values = buildExpenseValues(args)
+  const expenses = (session.expenses = session.expenses ?? [])
+  const expenseId = args?.p_expense_id as string | null
+
+  if (!expenseId) {
+    expenses.push({
+      id: `expense-${expenses.length + 1}-${Date.now()}`,
+      trip_id: args?.p_trip_id as string,
+      created_at: new Date().toISOString(),
+      ...values,
+    })
+  } else {
+    const existing = expenses.find((e) => e.id === expenseId)
+    if (!existing) return expenseError('The expense does not exist.')
+    if (!canManageSessionExpense(session, existing, userId)) {
+      return expenseError('Only the payer or the organizer can edit this expense.')
+    }
+    Object.assign(existing, values)
+  }
+
+  syncCookie()
+  return { data: null, error: null }
+}
+
+function handleRpcDeleteExpense(
+  session: PlanitTestSession,
+  args: Record<string, unknown> | undefined,
+  userId: string | undefined,
+  syncCookie: () => void
+) {
+  const existing = (session.expenses ?? []).find((e) => e.id === args?.p_expense_id)
+  if (!existing) return expenseError('The expense does not exist.')
+
+  if (!canManageSessionExpense(session, existing, userId)) {
+    return expenseError('Only the payer or the organizer can delete this expense.')
+  }
+
+  session.expenses = (session.expenses ?? []).filter((e) => e.id !== existing.id)
+  syncCookie()
   return { data: null, error: null }
 }
 
@@ -641,6 +727,12 @@ export function buildTestSupabaseClient(session: PlanitTestSession, cookieStore?
       }
       if (fn === 'unlock_trip_dates') {
         return handleRpcUnlockTripDates(session, syncCookie)
+      }
+      if (fn === 'save_trip_expense') {
+        return handleRpcSaveExpense(session, args, user?.id, syncCookie)
+      }
+      if (fn === 'delete_trip_expense') {
+        return handleRpcDeleteExpense(session, args, user?.id, syncCookie)
       }
       if (fn === 'promote_to_organizer') {
         return handleRpcPromoteToOrganizer(session, args, syncCookie)

@@ -11,10 +11,12 @@ import {InviteSettings} from './invite-settings'
 import {DateWindows} from './date-windows'
 import {AvailabilityCalendar} from './availability-calendar'
 import {LockDates} from './lock-dates'
+import {Expenses} from './expenses'
 import {PromoteToOrganizerButton} from './promote-member-button'
 import type {DateWindow} from '@/utils/date-windows'
 import {buildAvailabilityCalendar, type AvailabilityRow} from '@/utils/availability'
 import {groupAvailableByDay} from '@/utils/best-dates'
+import {mapExpenseRows, type Expense, type ExpenseRow} from '@/utils/expenses'
 
 type TripWorkspacePageProps = {
     params: Promise<{ id: string }>
@@ -43,12 +45,6 @@ const sections = [
         title: 'Itinerary',
         description: 'Build your plans and organize activities.',
         icon: '🧭',
-        status: 'Coming soon',
-    },
-    {
-        title: 'Expenses',
-        description: 'Keep track of costs and shared expenses.',
-        icon: '💳',
         status: 'Coming soon',
     },
 ]
@@ -460,6 +456,37 @@ function TripDangerZone({ tripId, isOrganizer }: { tripId: string; isOrganizer: 
     )
 }
 
+async function loadSharedData(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    tripId: string
+): Promise<
+    | { errorView: React.ReactNode }
+    | { availabilityRows: AvailabilityRow[]; expenses: Expense[] }
+> {
+    const { rows: availabilityRows, error: availabilityError } = await fetchAvailabilityRows(supabase, tripId)
+
+    if (availabilityError) {
+        console.error('Error fetching availability:', availabilityError)
+        return { errorView: <WorkspaceErrorView title="Could not load availability" message={availabilityError.message} /> }
+    }
+
+    const { data: expenseRows, error: expensesError } = await supabase
+        .from('trip_expenses')
+        .select('id, description, amount_cents, paid_by, created_at, trip_expense_participants(user_id, share_cents)')
+        .eq('trip_id', tripId)
+        .order('created_at', { ascending: false })
+
+    if (expensesError) {
+        console.error('Error fetching expenses:', expensesError)
+        return { errorView: <WorkspaceErrorView title="Could not load expenses" message={expensesError.message} /> }
+    }
+
+    return {
+        availabilityRows,
+        expenses: mapExpenseRows((expenseRows ?? []) as ExpenseRow[]),
+    }
+}
+
 async function loadWorkspaceData(
     supabase: Awaited<ReturnType<typeof createClient>>,
     tripId: string
@@ -471,6 +498,7 @@ async function loadWorkspaceData(
           dateWindows: DateWindow[]
           itineraryDays: Array<{ day: string }>
           availabilityRows: AvailabilityRow[]
+          expenses: Expense[]
       }
 > {
     const { data: trip, error } = await supabase
@@ -520,19 +548,16 @@ async function loadWorkspaceData(
         return { errorView: <WorkspaceErrorView title="Could not load trip dates" message={itineraryDaysError.message} /> }
     }
 
-    const { rows: availabilityRows, error: availabilityError } = await fetchAvailabilityRows(supabase, tripId)
-
-    if (availabilityError) {
-        console.error('Error fetching availability:', availabilityError)
-        return { errorView: <WorkspaceErrorView title="Could not load availability" message={availabilityError.message} /> }
-    }
+    const sharedData = await loadSharedData(supabase, tripId)
+    if ('errorView' in sharedData) { return sharedData }
 
     return {
         trip: trip as TripData,
         members: (members ?? []) as TripMember[],
         dateWindows: (dateWindows ?? []) as DateWindow[],
         itineraryDays: (itineraryDays ?? []) as Array<{ day: string }>,
-        availabilityRows,
+        availabilityRows: sharedData.availabilityRows,
+        expenses: sharedData.expenses,
     }
 }
 
@@ -543,6 +568,7 @@ interface TripWorkspaceBodyProps {
     dateWindows: DateWindow[]
     itineraryDays: Array<{ day: string }>
     availabilityRows: AvailabilityRow[]
+    expenses: Expense[]
     currentUserId: string
 }
 
@@ -553,6 +579,7 @@ function TripWorkspaceBody({
     dateWindows,
     itineraryDays,
     availabilityRows,
+    expenses,
     currentUserId,
 }: TripWorkspaceBodyProps) {
     const isOrganizer = trip.organizer_id === currentUserId
@@ -621,6 +648,14 @@ function TripWorkspaceBody({
                 />
             )}
 
+            <Expenses
+                tripId={tripId}
+                members={tripMembers.map(({ user_id, display_name }) => ({ user_id, display_name }))}
+                expenses={expenses}
+                currentUserId={currentUserId}
+                isOrganizer={isOrganizer}
+            />
+
             <TripSectionsList tripId={tripId} />
 
             <TripDangerZone tripId={tripId} isOrganizer={isOrganizer} />
@@ -655,6 +690,7 @@ async function TripWorkspaceContent({params}: TripWorkspacePageProps) {
                 dateWindows={load.dateWindows}
                 itineraryDays={load.itineraryDays}
                 availabilityRows={load.availabilityRows}
+                expenses={load.expenses}
                 currentUserId={user.id}
             />
         </main>
