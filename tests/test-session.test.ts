@@ -105,4 +105,55 @@ describe('buildTestSupabaseClient', () => {
     const removeRes = await storage.remove(['avatar.png'])
     expect(removeRes.error).toBeNull()
   })
+
+  it('logs, edits and deletes shared expenses with the same permissions as the database', async () => {
+    const session: PlanitTestSession = {
+      user: { id: 'ana', email: 'ana@planit.app' },
+      trips: [{ id: 'trip-1', name: 'Algarve', organizer_id: 'org' }],
+      expenses: [],
+    }
+    const cookieStore = { set: vi.fn() }
+    const client = buildTestSupabaseClient(session, cookieStore)
+    const save = (c: typeof client, expenseId: string | null, cents: number, payer: string, parts: string[]) =>
+      c.rpc('save_trip_expense', {
+        p_trip_id: 'trip-1',
+        p_expense_id: expenseId,
+        p_description: 'Dinner',
+        p_amount_cents: cents,
+        p_paid_by: payer,
+        p_participants: parts,
+      })
+
+    expect((await save(client, null, 1001, 'ana', ['bruno', 'ana'])).error).toBeNull()
+    expect(session.expenses).toHaveLength(1)
+    expect(session.expenses?.[0].trip_expense_participants).toEqual([
+      { user_id: 'ana', share_cents: 501 },
+      { user_id: 'bruno', share_cents: 500 },
+    ])
+    expect(cookieStore.set).toHaveBeenCalled()
+
+    const listed = await client.from('trip_expenses').select().eq('trip_id', 'trip-1').order('created_at')
+    expect(listed.data).toHaveLength(1)
+
+    const expenseId = session.expenses![0].id
+    expect((await save(client, expenseId, 2000, 'ana', ['ana'])).error).toBeNull()
+    expect(session.expenses?.[0].amount_cents).toBe(2000)
+    expect(session.expenses?.[0].trip_expense_participants).toEqual([{ user_id: 'ana', share_cents: 2000 }])
+
+    expect((await save(client, 'nope', 1, 'ana', ['ana'])).error?.message).toBe('The expense does not exist.')
+    expect((await client.rpc('delete_trip_expense', { p_expense_id: 'nope' })).error?.message).toBe(
+      'The expense does not exist.'
+    )
+
+    const bruno = buildTestSupabaseClient({ ...session, user: { id: 'bruno', email: 'bruno@planit.app' } })
+    expect((await save(bruno, expenseId, 1, 'bruno', ['bruno'])).error?.message).toBe(
+      'Only the payer or the organizer can edit this expense.'
+    )
+    expect((await bruno.rpc('delete_trip_expense', { p_expense_id: expenseId })).error?.message).toBe(
+      'Only the payer or the organizer can delete this expense.'
+    )
+
+    const organizer = buildTestSupabaseClient({ ...session, user: { id: 'org', email: 'org@planit.app' } })
+    expect((await organizer.rpc('delete_trip_expense', { p_expense_id: expenseId })).error).toBeNull()
+  })
 })

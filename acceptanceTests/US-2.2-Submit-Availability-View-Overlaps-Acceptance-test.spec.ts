@@ -79,7 +79,7 @@ test.describe('US-2.2: Submit Availability & View Overlaps', () => {
     await page.goto('/trips/trip-avail')
 
     await expect(page.getByText('1/2 available')).toBeVisible()
-    await expect(page.getByText('Alice', { exact: true })).toBeVisible()
+    await expect(page.locator('p').filter({ hasText: /^Alice$/ })).toBeVisible()
   })
 
   test('Given some members have not answered yet, when I view the calendar, then I can see who is still missing', async ({

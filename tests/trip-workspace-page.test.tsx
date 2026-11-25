@@ -64,6 +64,7 @@ describe('Trip workspace page', () => {
     let query: Query
     let availabilityQuery: Query
     let itineraryQuery: Query
+    let expensesQuery: Query
     let getUser: ReturnType<typeof vi.fn>
     let getTripMembers: ReturnType<typeof vi.fn>
 
@@ -121,6 +122,17 @@ describe('Trip workspace page', () => {
         itineraryQuery.eq.mockReturnValue(itineraryQuery)
         itineraryQuery.order.mockResolvedValue({data: [], error: null})
 
+        expensesQuery = {
+            select: vi.fn(),
+            eq: vi.fn(),
+            maybeSingle: vi.fn(),
+            order: vi.fn(),
+            range: vi.fn(),
+        }
+        expensesQuery.select.mockReturnValue(expensesQuery)
+        expensesQuery.eq.mockReturnValue(expensesQuery)
+        expensesQuery.order.mockResolvedValue({data: [], error: null})
+
         getUser = vi.fn().mockResolvedValue({
             data: {user: {id: 'user-1'}},
             error: null,
@@ -148,6 +160,7 @@ describe('Trip workspace page', () => {
             from: vi.fn((table: string) => {
                 if (table === 'trip_availability') return availabilityQuery
                 if (table === 'trip_itinerary_days') return itineraryQuery
+                if (table === 'trip_expenses') return expensesQuery
                 return query
             }),
             rpc: getTripMembers,
@@ -414,6 +427,42 @@ describe('Trip workspace page', () => {
             'Error fetching itinerary days:',
             databaseError
         )
+    })
+
+    it('shows the expenses of the trip with every share', async () => {
+        expensesQuery.order.mockResolvedValue({
+            data: [
+                {
+                    id: 'expense-1',
+                    description: 'Dinner',
+                    amount_cents: 3000,
+                    paid_by: 'member-2',
+                    created_at: '2026-11-20T20:00:00Z',
+                    trip_expense_participants: [
+                        {user_id: 'user-1', share_cents: 1500},
+                        {user_id: 'member-2', share_cents: 1500},
+                    ],
+                },
+            ],
+            error: null,
+        })
+
+        await renderContent()
+
+        expect(screen.getByTestId('expense-expense-1').textContent).toContain('Dinner')
+        expect(screen.getByTestId('expense-my-share').textContent).toBe('Your share: €15.00')
+        expect(expensesQuery.eq).toHaveBeenCalledWith('trip_id', 'trip-1')
+    })
+
+    it('renders an error message when the expenses query fails', async () => {
+        const databaseError = {message: 'Expenses unavailable'}
+        expensesQuery.order.mockResolvedValueOnce({data: null, error: databaseError})
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await renderContent()
+
+        expect(screen.getByText('Could not load expenses')).toBeTruthy()
+        expect(consoleError).toHaveBeenCalledWith('Error fetching expenses:', databaseError)
     })
 
     it('shows best-date suggestions to the organizer only', async () => {
