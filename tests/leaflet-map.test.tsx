@@ -58,7 +58,7 @@ describe('LeafletMap Component', () => {
       id: 'p-1',
       tripId: 'default',
       name: 'Torre de Belém',
-      category: 'sightseeing',
+      category: 'visit',
       lat: 38.6916,
       lng: -9.216,
       proposedBy: 'user@test.com',
@@ -148,6 +148,30 @@ describe('LeafletMap Component', () => {
     pinClickHandler(mockEvent)
     expect(L.DomEvent.stopPropagation).toHaveBeenCalledWith(mockEvent)
     expect(onPinClick).toHaveBeenCalled()
+  })
+
+  it('gives each pin the icon and colour of its category', () => {
+    render(
+      <LeafletMap
+        pins={[
+          ...samplePins,
+          { ...samplePins[0], id: 'p-3', category: 'meeting_point', isConfirmed: true },
+        ]}
+        layerId="voyager"
+        flyToTarget={null}
+        onMapClick={vi.fn()}
+        onPinClick={vi.fn()}
+      />
+    )
+
+    const icons = vi.mocked(L.divIcon).mock.calls.map(([options]) => String(options?.html))
+    expect(icons[0]).toContain('#3b82f6')
+    expect(icons[0]).toContain('🏛️')
+    expect(icons[1]).toContain('#f97316')
+    expect(icons[1]).toContain('🍴')
+    expect(icons[2]).toContain('#e11d48')
+    expect(icons[2]).toContain('📍')
+    expect(icons[2]).toContain('#fbbf24')
   })
 
   it('updates tile layer when layerId or apiKey changes, falling back to voyager on unknown layer', () => {

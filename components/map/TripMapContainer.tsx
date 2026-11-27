@@ -14,8 +14,10 @@ import { SearchBar } from './SearchBar'
 import { TripsCard } from './TripsCard'
 import { ConfirmedSpotsCard } from './ConfirmedSpotsCard'
 import { EditPinModal } from './EditPinModal'
+import { NewPinModal, type NewPinDraft } from './NewPinModal'
+import { CategoryLegend } from './CategoryLegend'
 import type { UserMemberTrip } from '@/app/trips/actions/get-member-trips'
-import { Pin, PlaceSearchResult } from '@/types/map'
+import { Pin, PinCategory, PlaceSearchResult } from '@/types/map'
 import { PinVoteCard } from './PinVoteCard'
 import { ProfileCard } from '@/components/profile'
 import { confirmPinAction, revertPinAction } from '@/app/trips/actions/pin-confirmation'
@@ -258,6 +260,7 @@ export function TripMapContainer({
   const [pins, setPins] = useState<Pin[]>(initialPins)
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
   const [editingPin, setEditingPin] = useState<Pin | null>(null)
+  const [pendingPin, setPendingPin] = useState<NewPinDraft | null>(null)
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number; zoom?: number } | null>(null)
   const [isTripsCardOpen, setIsTripsCardOpen] = useState(false)
   const [isConfirmedSpotsOpen, setIsConfirmedSpotsOpen] = useState(false)
@@ -279,65 +282,40 @@ export function TripMapContainer({
   const confirmedPins = pins.filter((p) => Boolean(p.isConfirmed))
 
   /**
-   * @brief Handles selecting a place from the search bar, flying to it and adding a marker.
+   * @brief Handles selecting a place from the search bar: flies to it and asks for its category.
    * @param place The chosen search result.
    */
-  const handleSelectPlace = useCallback(
-    async (place: PlaceSearchResult) => {
-      if (shouldPersist) {
-        const result = await createPinAction(tripId!, {
-          name: place.name,
-          category: 'sightseeing',
-          lat: place.lat,
-          lng: place.lon,
-        })
-
-        if (result.error || !result.pin) {
-          setPersistenceError(result.error ?? 'Failed to add pin.')
-          return
-        }
-
-        const createdPin = result.pin
-        setPins((prev) => [...prev, createdPin])
-        setSelectedPin(createdPin)
-        setFlyToTarget({ lat: place.lat, lng: place.lon, zoom: 14 })
-        return
-      }
-
-      const newPin: Pin = {
-        id: `pin-${Date.now()}`,
-        tripId,
-        name: place.name,
-        category: 'sightseeing',
-        lat: place.lat,
-        lng: place.lon,
-        proposedBy: currentUserEmail || 'You',
-        createdAt: new Date().toISOString(),
-        votes: [],
-        isConfirmed: false,
-      }
-      setPins((prev) => [...prev, newPin])
-      setSelectedPin(newPin)
-      setFlyToTarget({ lat: place.lat, lng: place.lon, zoom: 14 })
-    },
-    [currentUserEmail, shouldPersist, tripId]
-  )
+  const handleSelectPlace = useCallback((place: PlaceSearchResult) => {
+    setPendingPin({ name: place.name, lat: place.lat, lng: place.lon })
+    setFlyToTarget({ lat: place.lat, lng: place.lon, zoom: 14 })
+  }, [])
 
   /**
-   * @brief Handles map click: drops a pin at clicked coordinates and opens its voting card.
+   * @brief Handles map click: asks for the name and category of a pin at the clicked coordinates.
    * @param lat Latitude of clicked point.
    * @param lng Longitude of clicked point.
    */
-  const handleMapClick = useCallback(
-    async (lat: number, lng: number) => {
-      const name = `Point (${lat.toFixed(3)}, ${lng.toFixed(3)})`
+  const handleMapClick = useCallback((lat: number, lng: number) => {
+    setPendingPin({ name: `Point (${lat.toFixed(3)}, ${lng.toFixed(3)})`, lat, lng })
+  }, [])
+
+  /**
+   * @brief Creates the pending pin with the name and category chosen by the member.
+   * @param name The pin name.
+   * @param category The chosen pin category.
+   */
+  const handleCreatePin = useCallback(
+    async (name: string, category: PinCategory) => {
+      const draft = pendingPin
+      if (!draft) return
+      setPendingPin(null)
 
       if (shouldPersist) {
         const result = await createPinAction(tripId!, {
           name,
-          category: 'sightseeing',
-          lat,
-          lng,
+          category,
+          lat: draft.lat,
+          lng: draft.lng,
         })
 
         if (result.error || !result.pin) {
@@ -355,9 +333,9 @@ export function TripMapContainer({
         id: `pin-${Date.now()}`,
         tripId,
         name,
-        category: 'sightseeing',
-        lat,
-        lng,
+        category,
+        lat: draft.lat,
+        lng: draft.lng,
         proposedBy: currentUserEmail || 'You',
         createdAt: new Date().toISOString(),
         votes: [],
@@ -366,7 +344,7 @@ export function TripMapContainer({
       setPins((prev) => [...prev, newPin])
       setSelectedPin(newPin)
     },
-    [currentUserEmail, shouldPersist, tripId]
+    [currentUserEmail, pendingPin, shouldPersist, tripId]
   )
 
   /**
@@ -600,6 +578,18 @@ export function TripMapContainer({
           onEdit={(pin) => setEditingPin(pin)}
           onDelete={handleDeletePin}
           onClose={() => setSelectedPin(null)}
+        />
+      )}
+
+      {/* Legend explaining each pin category */}
+      <CategoryLegend />
+
+      {/* New Pin Modal Dialog: the category is mandatory */}
+      {pendingPin && (
+        <NewPinModal
+          draft={pendingPin}
+          onCreate={handleCreatePin}
+          onCancel={() => setPendingPin(null)}
         />
       )}
 

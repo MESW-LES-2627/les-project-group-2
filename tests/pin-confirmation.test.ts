@@ -18,7 +18,7 @@ describe('Pin Confirmation Service', () => {
     id: 'pin-1',
     tripId: 'trip-1',
     name: 'Belém Tower',
-    category: 'sightseeing',
+    category: 'visit',
     lat: 38.6916,
     lng: -9.216,
     proposedBy: 'pedro@planit.app',

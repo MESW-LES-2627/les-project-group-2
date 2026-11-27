@@ -13,25 +13,50 @@ import {
   PORTUGAL_DEFAULT_ZOOM,
   getCartoTileUrl,
   PinCategory,
+  PIN_CATEGORIES,
+  getCategoryIcon,
+  isPinCategory,
 } from '@/types/map'
 
 describe('Map Type and Category Helpers', () => {
   it('returns appropriate color for each pin category', () => {
-    expect(getCategoryColor('sightseeing')).toBe('#3b82f6')
-    expect(getCategoryColor('food')).toBe('#f97316')
-    expect(getCategoryColor('lodging')).toBe('#8b5cf6')
+    expect(getCategoryColor('stay')).toBe('#8b5cf6')
+    expect(getCategoryColor('visit')).toBe('#3b82f6')
     expect(getCategoryColor('activity')).toBe('#10b981')
-    expect(getCategoryColor('other')).toBe('#64748b')
-    expect(getCategoryColor('unknown' as PinCategory)).toBe('#64748b')
+    expect(getCategoryColor('food')).toBe('#f97316')
+    expect(getCategoryColor('meeting_point')).toBe('#e11d48')
+    expect(getCategoryColor('unknown' as PinCategory)).toBe('#3b82f6')
   })
 
   it('returns human-readable label for each category', () => {
-    expect(getCategoryLabel('sightseeing')).toBe('Sightseeing')
-    expect(getCategoryLabel('food')).toBe('Food & Drink')
-    expect(getCategoryLabel('lodging')).toBe('Lodging')
+    expect(getCategoryLabel('stay')).toBe('Stay')
+    expect(getCategoryLabel('visit')).toBe('Visit')
     expect(getCategoryLabel('activity')).toBe('Activity')
-    expect(getCategoryLabel('other')).toBe('Other')
-    expect(getCategoryLabel('unknown' as PinCategory)).toBe('Other')
+    expect(getCategoryLabel('food')).toBe('Food')
+    expect(getCategoryLabel('meeting_point')).toBe('Meeting Point')
+    expect(getCategoryLabel('unknown' as PinCategory)).toBe('Visit')
+  })
+
+  it('gives every category its own icon and colour', () => {
+    const icons = PIN_CATEGORIES.map((category) => getCategoryIcon(category.value))
+    const colors = PIN_CATEGORIES.map((category) => getCategoryColor(category.value))
+
+    expect(PIN_CATEGORIES.map((category) => category.value)).toEqual([
+      'stay',
+      'visit',
+      'activity',
+      'food',
+      'meeting_point',
+    ])
+    expect(new Set(icons).size).toBe(5)
+    expect(new Set(colors).size).toBe(5)
+    expect(getCategoryIcon('unknown' as PinCategory)).toBe(getCategoryIcon('visit'))
+  })
+
+  it('recognises supported categories only', () => {
+    expect(isPinCategory('meeting_point')).toBe(true)
+    expect(isPinCategory('sightseeing')).toBe(false)
+    expect(isPinCategory(undefined)).toBe(false)
   })
 
   it('validates coordinates accurately', () => {

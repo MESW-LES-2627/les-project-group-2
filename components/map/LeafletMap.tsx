@@ -14,6 +14,7 @@ import {
   PORTUGAL_DEFAULT_CENTER,
   PORTUGAL_DEFAULT_ZOOM,
   getCategoryColor,
+  getCategoryIcon,
   getCartoTileUrl,
   getPinVoteCount,
 } from '@/types/map'
@@ -41,6 +42,7 @@ interface LeafletMapProps {
  */
 function createPinIcon(category: Pin['category'], isConfirmed = false): L.DivIcon {
   const color = getCategoryColor(category)
+  const icon = getCategoryIcon(category)
   if (isConfirmed) {
     return L.divIcon({
       className: 'custom-pin-marker confirmed-pin-marker',
@@ -62,11 +64,9 @@ function createPinIcon(category: Pin['category'], isConfirmed = false): L.DivIco
           <div style="
             transform: rotate(45deg);
             color: #ffffff;
-            font-size: 13px;
-            font-weight: bold;
+            font-size: 15px;
             line-height: 1;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.6);
-          ">★</div>
+          ">${icon}</div>
         </div>
       `,
       iconSize: [36, 36],
@@ -94,11 +94,9 @@ function createPinIcon(category: Pin['category'], isConfirmed = false): L.DivIco
       ">
         <div style="
           transform: rotate(45deg);
-          width: 8px;
-          height: 8px;
-          background-color: white;
-          border-radius: 50%;
-        "></div>
+          font-size: 14px;
+          line-height: 1;
+        ">${icon}</div>
       </div>
     `,
     iconSize: [32, 32],

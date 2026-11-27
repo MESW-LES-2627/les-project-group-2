@@ -15,7 +15,7 @@ describe('EditPinModal Component', () => {
     tripId: 'trip-1',
     name: 'Belém Tower',
     description: 'Fortress',
-    category: 'sightseeing',
+    category: 'visit',
     lat: 38.6916,
     lng: -9.216,
     proposedBy: 'author@planit.app',
@@ -52,7 +52,7 @@ describe('EditPinModal Component', () => {
 
     expect((screen.getByTestId('edit-pin-name') as HTMLInputElement).value).toBe('Belém Tower')
     expect((screen.getByTestId('edit-pin-description') as HTMLTextAreaElement).value).toBe('Fortress')
-    expect((screen.getByTestId('edit-pin-category') as HTMLSelectElement).value).toBe('sightseeing')
+    expect((screen.getByTestId('edit-pin-category') as HTMLSelectElement).value).toBe('visit')
     expect((screen.getByTestId('edit-pin-lat') as HTMLInputElement).value).toBe('38.6916')
     expect((screen.getByTestId('edit-pin-lng') as HTMLInputElement).value).toBe('-9.216')
   })

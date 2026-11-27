@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { makePin, setTestSession } from './helpers'
+import { createPinWithCategory, makePin, setTestSession } from './helpers'
 
 const baseSession = {
   user: { id: 'org-1', email: 'organizer@planit.app' },
@@ -32,6 +32,7 @@ test.describe('US-3.1: Interactive Map & Pin Dropping', () => {
     await expect(map).toBeVisible()
 
     await map.click({ position: { x: 500, y: 400 } })
+    await createPinWithCategory(page, 'Visit')
 
     await expect(page.getByTestId('pin-vote-card')).toBeVisible()
     await expect(page.getByTestId('pin-name')).toContainText('Point (')
@@ -44,6 +45,7 @@ test.describe('US-3.1: Interactive Map & Pin Dropping', () => {
     await expect(map).toBeVisible()
 
     await map.click({ position: { x: 520, y: 420 } })
+    await createPinWithCategory(page, 'Visit')
 
     await expect(page.locator('.custom-pin-marker')).toHaveCount(1)
   })

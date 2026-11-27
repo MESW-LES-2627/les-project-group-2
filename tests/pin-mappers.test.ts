@@ -28,7 +28,7 @@ describe('pin-mappers', () => {
     name: 'Torre de Belém',
     description: 'Iconic tower',
     date: '2026-11-15',
-    category: 'sightseeing',
+    category: 'visit',
     lat: 38.6916,
     lng: -9.216,
     proposed_by: 'organizer@planit.app',
@@ -39,8 +39,15 @@ describe('pin-mappers', () => {
 
   it('normalises supported and unsupported categories', () => {
     expect(toPinCategory('food')).toBe('food')
-    expect(toPinCategory('unknown')).toBe('other')
-    expect(toPinCategory(null)).toBe('other')
+    expect(toPinCategory('meeting_point')).toBe('meeting_point')
+    expect(toPinCategory('unknown')).toBe('visit')
+    expect(toPinCategory(null)).toBe('visit')
+  })
+
+  it('maps the categories used before US-3.4 to the closest current one', () => {
+    expect(toPinCategory('sightseeing')).toBe('visit')
+    expect(toPinCategory('lodging')).toBe('stay')
+    expect(toPinCategory('other')).toBe('visit')
   })
 
   it('maps a vote row', () => {
@@ -61,7 +68,7 @@ describe('pin-mappers', () => {
       name: 'Torre de Belém',
       description: 'Iconic tower',
       date: '2026-11-15',
-      category: 'sightseeing',
+      category: 'visit',
       lat: 38.6916,
       lng: -9.216,
       proposedBy: 'organizer@planit.app',
@@ -91,7 +98,7 @@ describe('pin-mappers', () => {
       proposed_by: 'member@planit.app',
     })
 
-    expect(mapped.category).toBe('other')
+    expect(mapped.category).toBe('visit')
     expect(mapped.description).toBeUndefined()
     expect(mapped.date).toBeUndefined()
     expect(mapped.votes).toEqual([])
