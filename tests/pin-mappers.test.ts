@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   mapPinRow,
+  mapPinCommentRow,
   mapPinRows,
   mapPinVoteRow,
   toPinCategory,
@@ -83,8 +84,44 @@ describe('pin-mappers', () => {
           createdAt: '2026-11-01T00:00:00Z',
         },
       ],
+      comments: [],
       isConfirmed: true,
     })
+  })
+
+  it('maps a comment row', () => {
+    expect(
+      mapPinCommentRow({
+        id: 'c-1',
+        pin_id: 'pin-1',
+        user_id: 'user-1',
+        author_name: 'Ana',
+        body: 'Looks great',
+        created_at: '2026-11-20T10:00:00Z',
+      })
+    ).toEqual({
+      id: 'c-1',
+      pinId: 'pin-1',
+      userId: 'user-1',
+      authorName: 'Ana',
+      body: 'Looks great',
+      createdAt: '2026-11-20T10:00:00Z',
+    })
+    expect(
+      mapPinCommentRow({ id: 'c-2', pin_id: 'pin-1', user_id: 'user-1', author_name: 'Ana', body: 'Hi' }).createdAt
+    ).toBe('')
+  })
+
+  it('maps the comments of a pin from the oldest to the newest', () => {
+    const mapped = mapPinRow({
+      ...pinRow,
+      pin_comments: [
+        { id: 'c-new', pin_id: 'pin-1', user_id: 'u', author_name: 'Bruno', body: 'Second', created_at: '2026-11-21T10:00:00Z' },
+        { id: 'c-old', pin_id: 'pin-1', user_id: 'u', author_name: 'Ana', body: 'First', created_at: '2026-11-20T10:00:00Z' },
+      ],
+    })
+
+    expect(mapped.comments?.map((comment) => comment.id)).toEqual(['c-old', 'c-new'])
   })
 
   it('applies defaults for optional fields and missing votes', () => {
@@ -102,6 +139,7 @@ describe('pin-mappers', () => {
     expect(mapped.description).toBeUndefined()
     expect(mapped.date).toBeUndefined()
     expect(mapped.votes).toEqual([])
+    expect(mapped.comments).toEqual([])
     expect(mapped.isConfirmed).toBe(false)
     expect(mapped.createdAt).toBe('')
   })

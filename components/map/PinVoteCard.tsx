@@ -18,6 +18,7 @@ import {
 import { toggleVoteOnPin } from '@/services/pin-votes'
 import { canEditPin, canDeletePin } from '@/services/pin-management'
 import { Edit2, Trash2 } from 'lucide-react'
+import { PinComments } from './PinComments'
 
 interface PinVoteCardProps {
   pin: Pin
@@ -28,6 +29,8 @@ interface PinVoteCardProps {
   onConfirmToggle?: (updatedPin: Pin) => void
   onEdit?: (pin: Pin) => void
   onDelete?: (pinId: string) => void
+  onAddComment?: (pinId: string, body: string) => Promise<{ error?: string }>
+  onDeleteComment?: (pinId: string, commentId: string) => Promise<{ error?: string }>
   onClose?: () => void
 }
 
@@ -176,6 +179,29 @@ function PinConfirmButton({
   )
 }
 
+function PinCommentsSection({
+  pin,
+  currentUserId,
+  onAddComment,
+  onDeleteComment,
+}: {
+  pin: Pin
+  currentUserId?: string
+  onAddComment?: PinVoteCardProps['onAddComment']
+  onDeleteComment?: PinVoteCardProps['onDeleteComment']
+}) {
+  if (!onAddComment || !onDeleteComment) return null
+
+  return (
+    <PinComments
+      comments={pin.comments ?? []}
+      currentUserId={currentUserId}
+      onAdd={(body) => onAddComment(pin.id, body)}
+      onDelete={(commentId) => onDeleteComment(pin.id, commentId)}
+    />
+  )
+}
+
 /**
  * @brief In-place pin details, voting, edit, delete, and confirmation card rendered over the map workspace.
  * @param props Component properties containing target pin and callbacks.
@@ -189,6 +215,8 @@ export function PinVoteCard({
   onConfirmToggle,
   onEdit,
   onDelete,
+  onAddComment,
+  onDeleteComment,
   onClose,
 }: PinVoteCardProps) {
   const [prevPin, setPrevPin] = useState<Pin>(pin)
@@ -325,6 +353,14 @@ export function PinVoteCard({
         isConfirmed={isConfirmed}
         userHasVoted={userHasVoted}
         onToggleVote={handleToggleVote}
+      />
+
+      {/* Discussion under the pin */}
+      <PinCommentsSection
+        pin={currentPin}
+        currentUserId={currentUserId}
+        onAddComment={onAddComment}
+        onDeleteComment={onDeleteComment}
       />
 
       {/* Edit and Delete Actions */}

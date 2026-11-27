@@ -44,6 +44,18 @@ export interface PinVote {
   createdAt: string
 }
 
+/**
+ * @brief A comment written by a trip member under a pin.
+ */
+export interface PinComment {
+  id: string
+  pinId: string
+  userId: string
+  authorName: string
+  body: string
+  createdAt: string
+}
+
 export interface Pin {
   id: string
   tripId: string
@@ -56,6 +68,7 @@ export interface Pin {
   proposedBy: string
   createdAt: string
   votes?: PinVote[]
+  comments?: PinComment[]
   isConfirmed?: boolean
 }
 

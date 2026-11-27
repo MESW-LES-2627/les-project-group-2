@@ -4,7 +4,7 @@
  */
 
 import { isPinCategory } from '@/types/map'
-import type { Pin, PinCategory, PinVote } from '@/types/map'
+import type { Pin, PinCategory, PinComment, PinVote } from '@/types/map'
 
 /**
  * @brief Categories used before US-3.4, mapped to their closest current category.
@@ -31,6 +31,7 @@ export interface PinRow {
   created_at?: string | null
   is_confirmed?: boolean | null
   pin_votes?: PinVoteRow[] | null
+  pin_comments?: PinCommentRow[] | null
 }
 
 /**
@@ -42,6 +43,18 @@ export interface PinVoteRow {
   user_id: string
   user_email: string
   trip_date?: string | null
+  created_at?: string | null
+}
+
+/**
+ * @brief Database shape for a row returned by the `pin_comments` table.
+ */
+export interface PinCommentRow {
+  id: string
+  pin_id: string
+  user_id: string
+  author_name: string
+  body: string
   created_at?: string | null
 }
 
@@ -72,6 +85,29 @@ export function mapPinVoteRow(row: PinVoteRow): PinVote {
 }
 
 /**
+ * @brief Maps a `pin_comments` row to the client model.
+ * @param row The database comment row.
+ * @return PinComment object.
+ */
+export function mapPinCommentRow(row: PinCommentRow): PinComment {
+  return {
+    id: row.id,
+    pinId: row.pin_id,
+    userId: row.user_id,
+    authorName: row.author_name,
+    body: row.body,
+    createdAt: row.created_at ?? '',
+  }
+}
+
+/**
+ * @brief Orders comments from the oldest to the newest.
+ */
+function byCreatedAt(a: PinComment, b: PinComment): number {
+  return a.createdAt.localeCompare(b.createdAt)
+}
+
+/**
  * @brief Maps a `pins` row (optionally including nested votes) to the client model.
  * @param row The database pin row.
  * @return Pin object used by the map UI.
@@ -89,6 +125,7 @@ export function mapPinRow(row: PinRow): Pin {
     proposedBy: row.proposed_by,
     createdAt: row.created_at ?? '',
     votes: (row.pin_votes ?? []).map(mapPinVoteRow),
+    comments: (row.pin_comments ?? []).map(mapPinCommentRow).sort(byCreatedAt),
     isConfirmed: Boolean(row.is_confirmed),
   }
 }
