@@ -170,6 +170,20 @@ describe('Pin Management Server Actions', () => {
       expect(res).toEqual({ error: 'Pin name cannot be empty.' })
     })
 
+    it('rejects an unsupported category', async () => {
+      const result = await updatePinAction('trip-1', 'pin-1', { category: 'lodging' as never })
+
+      expect(result).toEqual({ error: 'Choose a valid category for the pin.' })
+      expect(mockPinsQuery.update).not.toHaveBeenCalled()
+    })
+
+    it('allows changing only the category', async () => {
+      const result = await updatePinAction('trip-1', 'pin-1', { category: 'meeting_point' })
+
+      expect(result.success).toBe(true)
+      expect(mockPinsQuery.update).toHaveBeenCalledWith({ category: 'meeting_point' })
+    })
+
     it('allows creator to update proposed pin', async () => {
       const res = await updatePinAction('trip-1', 'pin-1', {
         name: 'New Name',

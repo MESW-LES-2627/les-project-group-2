@@ -32,7 +32,7 @@ describe('PinVoteCard Component', () => {
   it('renders pin title, category, date, and initial zero vote count', () => {
     render(<PinVoteCard pin={samplePin} currentUserEmail="traveler@planit.app" />)
     expect(screen.getByTestId('pin-name').textContent).toBe('Cervejaria Ramiro')
-    expect(screen.getByText('Food & Drink')).toBeDefined()
+    expect(screen.getByText('Food')).toBeDefined()
     expect(screen.getByTestId('pin-date-badge').textContent).toContain('2026-11-20')
     expect(screen.getByText('Popular seafood restaurant in Lisbon')).toBeDefined()
     expect(screen.getByTestId('pin-vote-count').textContent).toBe('0 votes')

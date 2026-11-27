@@ -3,15 +3,17 @@
  * @brief Translates Supabase `pins`/`pin_votes` rows into the client-side Pin model.
  */
 
+import { isPinCategory } from '@/types/map'
 import type { Pin, PinCategory, PinVote } from '@/types/map'
 
-const PIN_CATEGORIES: PinCategory[] = [
-  'sightseeing',
-  'food',
-  'lodging',
-  'activity',
-  'other',
-]
+/**
+ * @brief Categories used before US-3.4, mapped to their closest current category.
+ */
+const LEGACY_CATEGORIES: Record<string, PinCategory> = {
+  sightseeing: 'visit',
+  lodging: 'stay',
+  other: 'visit',
+}
 
 /**
  * @brief Database shape for a row returned by the `pins` table.
@@ -46,12 +48,11 @@ export interface PinVoteRow {
 /**
  * @brief Normalises a free-form category string to a supported pin category.
  * @param category Raw category value from the database.
- * @return A valid PinCategory, defaulting to 'other'.
+ * @return A valid PinCategory. Legacy and unknown values become 'visit'.
  */
 export function toPinCategory(category?: string | null): PinCategory {
-  return PIN_CATEGORIES.includes(category as PinCategory)
-    ? (category as PinCategory)
-    : 'other'
+  if (isPinCategory(category)) return category
+  return LEGACY_CATEGORIES[category ?? ''] ?? 'visit'
 }
 
 /**

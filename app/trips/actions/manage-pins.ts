@@ -7,7 +7,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { PinCategory, isValidCoordinate } from '@/types/map'
+import { PinCategory, isPinCategory, isValidCoordinate } from '@/types/map'
 
 export interface PinUpdateInput {
   name?: string
@@ -106,6 +106,10 @@ function validatePinUpdateInput(input: PinUpdateInput): string | null {
 
   if (input.name !== undefined && !input.name.trim()) {
     return 'Pin name cannot be empty.'
+  }
+
+  if (input.category !== undefined && !isPinCategory(input.category)) {
+    return 'Choose a valid category for the pin.'
   }
 
   return null

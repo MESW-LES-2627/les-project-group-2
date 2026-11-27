@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { setTestSession } from './helpers'
+import { createPinWithCategory, setTestSession } from './helpers'
 
 const baseSession = {
   user: { id: 'org-1', email: 'organizer@planit.app' },
@@ -56,6 +56,7 @@ test.describe('US-3.7: Search Place by Name', () => {
     const search = page.getByPlaceholder('Search places across the map...')
     await search.fill('Porto')
     await page.locator('ul li button').first().click()
+    await createPinWithCategory(page, 'Visit')
 
     await expect(page.getByTestId('pin-vote-card')).toBeVisible()
     await expect(page.getByTestId('pin-name')).toHaveText('Porto')

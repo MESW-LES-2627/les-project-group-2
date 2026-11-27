@@ -10,6 +10,7 @@ import {
   Pin,
   getCategoryLabel,
   getCategoryColor,
+  getCategoryIcon,
 } from '@/types/map'
 import { CheckCircle2, MapPin, X, RotateCcw } from 'lucide-react'
 
@@ -96,9 +97,12 @@ export function ConfirmedSpotsCard({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span
-                        className="inline-block h-2 w-2 rounded-full"
+                        aria-hidden="true"
+                        className="flex h-4 w-4 items-center justify-center rounded-full text-[9px]"
                         style={{ backgroundColor: categoryColor }}
-                      />
+                      >
+                        {getCategoryIcon(pin.category)}
+                      </span>
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                         {getCategoryLabel(pin.category)}
                       </span>

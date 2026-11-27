@@ -67,7 +67,7 @@ describe('Pin Storage Service', () => {
         tripId: 'trip-abc',
         name: 'Miradouro de Santa Luzia',
         description: 'Great viewpoint in Alfama',
-        category: 'sightseeing',
+        category: 'visit',
         lat: 38.7116,
         lng: -9.1303,
         proposedBy: 'pedro@example.com',
@@ -114,7 +114,7 @@ describe('Pin Storage Service', () => {
     const added = addPinToTrip('trip-xyz', {
       tripId: 'trip-xyz',
       name: 'Pena Palace',
-      category: 'sightseeing',
+      category: 'visit',
       lat: 38.7876,
       lng: -9.3906,
       proposedBy: 'cassia@example.com',

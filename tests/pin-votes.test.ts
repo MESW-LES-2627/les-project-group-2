@@ -22,7 +22,7 @@ describe('Pin Voting Logic (US-3.2)', () => {
     id: 'pin-bel-1',
     tripId: 'trip-lisbon',
     name: 'Belém Tower',
-    category: 'sightseeing',
+    category: 'visit',
     lat: 38.6916,
     lng: -9.216,
     proposedBy: 'organizer@planit.app',

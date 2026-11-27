@@ -44,7 +44,7 @@ describe('getTripPins', () => {
           name: 'Torre de Belém',
           description: null,
           date: '2026-11-15',
-          category: 'sightseeing',
+          category: 'visit',
           lat: 38.69,
           lng: -9.21,
           proposed_by: 'organizer@planit.app',
