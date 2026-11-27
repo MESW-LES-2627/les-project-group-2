@@ -75,13 +75,13 @@ test.describe('US-1.4: Manage Trip Members', () => {
     })
 
     await page.goto('/trips/trip-100')
-    await expect(page.getByText('Charlie Member')).toBeVisible()
+    await expect(page.locator('p').filter({ hasText: 'Charlie Member' })).toBeVisible()
 
     const removeBtn = page.getByRole('button', { name: 'Remove member' })
     await expect(removeBtn).toBeVisible()
     await removeBtn.click()
 
-    await expect(page.getByText('Charlie Member')).not.toBeVisible()
+    await expect(page.locator('p').filter({ hasText: 'Charlie Member' })).not.toBeVisible()
   })
 
   test('Given I am a member who is not the organizer, when I leave the trip, then it no longer appears in my trips dashboard', async ({
